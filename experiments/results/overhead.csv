@@ -1,0 +1,3 @@
+operation,n,median_ms
+destroy-file-1MiB,20,604.9
+destroy-file-10MiB,20,1028.2
