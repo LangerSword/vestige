@@ -17,10 +17,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # JDK 25 is the project's baseline: the FFM API (java.lang.foreign) is
-        # final there and SecretBuffer depends on it. The lower JDKs prove the
-        # compatibility claim in SETUP.md ("JDK 22-24 will likely compile").
-        jdk: [ '25', '22' ]
+        # JDK 25 is the project's only supported JDK. The root pom sets
+        # maven.compiler.release=25, so a lower JDK cannot compile the
+        # project at all (CI proves this: "error: release version 25 not
+        # supported"). The FFM API used by destroy-memory is final in 22,
+        # but the project does not claim to build on it — see SETUP.md.
+        jdk: [ '25' ]
         # The canary verifier's behaviour depends on the collector: G1 leaves
         # stale copies, ZGC maps its heap via /memfd: and Shenandoah is the
         # outlier (docs/RESULTS.md). Running the suite under more than one
