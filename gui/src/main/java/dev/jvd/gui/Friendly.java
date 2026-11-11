@@ -40,6 +40,48 @@ final class Friendly {
 
     private Friendly() {}
 
+    /**
+     * The stages a destruction goes through, in the order they happen.
+     *
+     * <p>The window shows this list before the run starts, so the user can see the plan
+     * rather than watching a blank panel. The order matches the transaction exactly, and
+     * the wording matches what the runner reports when each stage really completes.
+     */
+    static java.util.List<StageEvent> plannedStages() {
+        return java.util.List.of(
+                new StageEvent(1, "Checking your file",
+                        "We look at the file and work out how to destroy it."),
+                new StageEvent(2, "Making a protected copy",
+                        "We make an encrypted copy, so a failed run can put the file back."),
+                new StageEvent(3, "Destroying the original",
+                        "We overwrite the original with zeros, then delete it."),
+                new StageEvent(4, "Final check before we make it permanent",
+                        "We check that the original is gone and that the copy still opens."),
+                new StageEvent(5, "Making it permanent",
+                        "We destroy the key that opens the copy. From here it cannot be undone."),
+                new StageEvent(6, "Testing that it really cannot be read",
+                        "We try to read the copy we kept. It cannot be read, because the key is gone."),
+                new StageEvent(7, "Writing the signed record",
+                        "We write a signed record, so you can show it to anyone."),
+                new StageEvent(8, "Adding it to the history",
+                        "We add the record to your history, countersigned by a second key."),
+                new StageEvent(9, "Done",
+                        "Your file has been destroyed and we verified it."));
+    }
+
+    /**
+     * The index of a reported stage in the planned list.
+     *
+     * <p>The runner reports steps 1 to 9, and the planned list has nine entries in the
+     * same order, so the mapping is the step number minus one. A stage the runner
+     * reports that the plan does not know returns -1, and the caller leaves it out
+     * rather than showing a step in the wrong place.
+     */
+    static int stageIndex(StageEvent event) {
+        int index = event.step() - 1;
+        return index >= 0 && index < plannedStages().size() ? index : -1;
+    }
+
     /** Turns a technical failure into something a person can act on. */
     static String describeFailure(Throwable t) {
         Throwable root = t;
