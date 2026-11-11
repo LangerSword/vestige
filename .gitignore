@@ -16,3 +16,8 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Project site build output
+site/node_modules/
+site/dist/
+site/.wrangler/
