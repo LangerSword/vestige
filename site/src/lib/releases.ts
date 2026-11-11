@@ -47,7 +47,7 @@ export type ReleaseState = {
   detail?: string;
 };
 
-export const REPO = "asingh1192/Vestige";
+export const REPO = "LangerSword/Vestige";
 
 /**
  * GitHub allows 60 unauthenticated requests an hour per IP, and a page that

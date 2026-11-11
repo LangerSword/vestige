@@ -61,7 +61,7 @@ jobs:
     # When it has not been, the deploy is skipped rather than failed: the
     # site still builds, and the reason is stated once instead of on every
     # push.
-    if: github.repository_owner == 'asingh1192'
+    if: github.repository_owner == 'LangerSword'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
