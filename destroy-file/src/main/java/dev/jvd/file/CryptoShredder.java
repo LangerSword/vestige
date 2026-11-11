@@ -56,10 +56,11 @@ public final class CryptoShredder {
         RNG.nextBytes(dek);
         byte[] iv = new byte[IV_BYTES];
         RNG.nextBytes(iv);
+        byte[] plain = null;
         try {
             Cipher gcm = Cipher.getInstance("AES/GCM/NoPadding");
             gcm.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(dek, "AES"), new GCMParameterSpec(GCM_TAG_BITS, iv));
-            byte[] plain = Files.readAllBytes(in);
+            plain = Files.readAllBytes(in);
             byte[] ct = gcm.doFinal(plain);
             if (out.getParent() != null) Files.createDirectories(out.getParent());
             Files.write(out, ct);
@@ -70,6 +71,11 @@ public final class CryptoShredder {
             return new ShredResult(out, wrapped, iv);
         } finally {
             Arrays.fill(dek, (byte) 0);
+            // The plaintext of the file being destroyed must not survive in this
+            // process. It is the only copy left once the source is deleted, and the
+            // tool's own canary verifier would find it here if the heap were
+            // scanned. Zeroing it costs one pass over the buffer.
+            if (plain != null) Arrays.fill(plain, (byte) 0);
         }
     }
 

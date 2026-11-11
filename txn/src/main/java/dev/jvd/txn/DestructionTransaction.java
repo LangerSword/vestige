@@ -45,15 +45,24 @@ import java.util.List;
  * aborted + restored; COMMITTED stays destroyed. Recovery never reports a
  * non-committed transaction as destroyed.
  *
- * <p>Key custody note (demo scope): the caller-supplied KEK hex and source
- * path are recorded in {@code txn.meta} inside the work directory so a later
- * process can recover after {@code kill -9}. The work directory is a trusted
- * location in this implementation's threat model; production custody belongs
- * in a KMS/HSM.
+ * <p><b>COMMIT is journalled as an intent before the irreversible step.</b>
+ * Destroying the key cannot be undone, so a crash between the destruction
+ * and the journal write would leave the journal saying "not committed" for a
+ * transaction whose key is already gone. Recovery would then roll back,
+ * fail to restore, and report ABORTED — a destroyed file reported as
+ * never destroyed, with the original unrecoverable. The journal therefore
+ * records {@link State#COMMITTING} first, and recovery treats that state as
+ * "the key may or may not be gone, inspect the filesystem, never roll back".
+ *
+ * <p>Key custody note: the KEK is never written to disk. The work
+ * directory holds the source path, the journal, the ciphertext container and
+ * the wrapped key — but not the wrapping key that protects them. A later
+ * process that needs to recover a transaction must be given the KEK again by
+ * whoever holds it. Production custody belongs in a KMS/HSM.
  */
 public final class DestructionTransaction {
 
-    public enum State { STAGED, VAULTED, SCRUBBED, VALIDATED_PRECOMMIT, COMMITTED, ABORTED }
+    public enum State { STAGED, VAULTED, SCRUBBED, VALIDATED_PRECOMMIT, COMMITTING, COMMITTED, ABORTED }
 
     /** Receives lifecycle events (evidence/logging hook). ABORTED is delivered before any restore runs. */
     @FunctionalInterface
@@ -143,6 +152,17 @@ public final class DestructionTransaction {
     /** COMMIT: destroy the key material. Irreversible — no restore after this. */
     public void commit() throws IOException {
         requireState(State.VALIDATED_PRECOMMIT);
+
+        // Journal the intent BEFORE the irreversible step. If the process dies after
+        // the key is destroyed but before the COMMITTED row is written, the journal
+        // still says COMMITTING, and recovery can tell that the destruction may have
+        // happened. Without this row, recovery would see "not committed", try to roll
+        // back, fail to restore a file whose key is gone, and report ABORTED for a
+        // transaction that did destroy the file.
+        journal(State.COMMITTING, "intent to destroy the wrapped DEK");
+        state = State.COMMITTING;
+        sink.onEvent("COMMITTING", "destroying the key that opens the copy");
+
         destroyVaultKey();
         if (shred != null) shred.destroyKey(); // wipe the in-memory wrapped DEK too
         Files.move(workDir.resolve(VAULT_ENC), workDir.resolve(ARTIFACT));
@@ -167,13 +187,22 @@ public final class DestructionTransaction {
 
     // ---------- recovery ----------
 
-    /** Recovers using the source path and KEK recorded in txn.meta. */
-    public static RecoveryResult recover(Path workDir) throws Exception {
+    /**
+     * Recovers a transaction using the source path recorded in {@code txn.meta}.
+     *
+     * <p>The KEK is <b>not</b> read from the work directory: it is not written there
+     * any more, because a KEK stored beside the wrapped key protects nothing. The
+     * caller must supply it again, which means recovering a transaction requires
+     * whoever holds the key — exactly the property crypto-shredding depends on.
+     *
+     * @param workDir the work directory of the interrupted transaction
+     * @param kek     the wrapping key, supplied again by whoever holds it
+     */
+    public static RecoveryResult recover(Path workDir, byte[] kek) throws Exception {
         Path meta = workDir.resolve(META);
         if (!Files.exists(meta)) return new RecoveryResult(null, false, "no transaction metadata in " + workDir);
         List<String> lines = Files.readAllLines(meta, StandardCharsets.UTF_8);
-        Path source = Path.of(lines.get(0));
-        byte[] kek = HexFormat.of().parseHex(lines.get(1).strip());
+        Path source = Path.of(lines.get(0).strip());
         return recover(workDir, source, kek);
     }
 
@@ -186,6 +215,34 @@ public final class DestructionTransaction {
         }
         if (last == State.ABORTED) {
             return new RecoveryResult(State.ABORTED, false, "transaction already ABORTED");
+        }
+        if (last == State.COMMITTING) {
+            // The transaction reached the point where destroying the key is allowed to
+            // happen. The crash may have landed before or after the key was destroyed,
+            // and the only honest answer comes from the filesystem, not the journal.
+            //
+            // The key file is gone: the destruction happened, so it stands.
+            // The key file is still there: the crash landed before the destruction, so
+            // the transaction is rolled back and the original is restored.
+            //
+            // Either way this is never reported as ABORTED for a transaction whose
+            // data is gone.
+            Path keyFile = workDir.resolve(VAULT_KEY);
+            boolean keyGone = !Files.exists(keyFile);
+            if (keyGone) {
+                return new RecoveryResult(State.COMMITTED, false,
+                        "crashed during COMMIT after the key was destroyed; destruction stands, "
+                                + "nothing restored. The file cannot be brought back.");
+            }
+            DestructionTransaction txn = new DestructionTransaction(workDir, source, kek, last);
+            List<String> events = new ArrayList<>();
+            txn.setEvidenceSink((t, d) -> events.add(t + ":" + d));
+            boolean sourceMissing = !Files.exists(source);
+            txn.rollback("crashed during COMMIT before the key was destroyed");
+            boolean restored = sourceMissing && Files.exists(source);
+            return new RecoveryResult(State.ABORTED, restored,
+                    "crashed during COMMIT before the key was destroyed; rolled back and restored; events="
+                            + events);
         }
         // Any other last state = crashed mid-transaction, pre-COMMIT: abort + restore.
         DestructionTransaction txn = new DestructionTransaction(workDir, source, kek, last);
@@ -249,8 +306,23 @@ public final class DestructionTransaction {
         destroyVaultKey();
     }
 
+    /**
+     * Writes the transaction metadata.
+     *
+     * <p><b>The KEK is deliberately not written here.</b> The wrapping key is the
+     * one secret that turns "the key file was destroyed" into "the data is
+     * unrecoverable". Storing it next to the wrapped key it protects in plain text
+     * means anyone who can read the work directory can decrypt the ciphertext
+     * container, which is exactly what the crypto-shred was supposed to prevent:
+     * shredding the wrapped DEK achieves nothing while the KEK sits in a
+     * readable file a few bytes away.
+     *
+     * <p>Only the source path is recorded, so a later process can find what was
+     * being destroyed. Recovering a transaction needs the KEK supplied again by
+     * whoever holds it — see {@link #recover(Path, Path, byte[])}.
+     */
     private void writeMeta() throws IOException {
-        String content = source.toAbsolutePath() + "\n" + HexFormat.of().formatHex(kek) + "\n";
+        String content = source.toAbsolutePath() + "\n";
         writeFsynced(workDir.resolve(META), content.getBytes(StandardCharsets.UTF_8));
     }
 

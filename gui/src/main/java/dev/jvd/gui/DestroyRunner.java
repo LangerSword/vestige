@@ -93,10 +93,11 @@ public final class DestroyRunner {
 
         byte[] kek = sessionKey.copy();
         Path workDir = createWorkDir();
-        // The transaction writes the KEK into txn.meta inside the work dir so an
-        // interrupted run can be recovered later. That is the txn module's own
-        // documented behaviour (see its "Key custody note"), and the work dir is
-        // therefore a trusted location in this app's threat model.
+        // The KEK is not written to disk by the transaction. It lives only in this
+        // session's memory, which means an interrupted run cannot be recovered by
+        // anyone who finds the work directory — they would need the key that only
+        // this session held. That is the intended property: the work directory
+        // alone must never be enough to undo a destruction.
         DestructionTransaction txn;
         try {
             txn = new DestructionTransaction(workDir, source, kek);

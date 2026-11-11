@@ -106,7 +106,7 @@ class TransactionTest {
             Path work = dir.resolve("work");
             int exit = runCrashMain(work, stop, src, kek);
             assertEquals(137, exit, "child must die by halt(137) at " + stop);
-            DestructionTransaction.RecoveryResult rr = DestructionTransaction.recover(work);
+            DestructionTransaction.RecoveryResult rr = DestructionTransaction.recover(work, kek);
             assertEquals(DestructionTransaction.State.ABORTED, rr.status(),
                     "crashed at " + stop + " must recover as ABORTED, never destroyed");
             assertTrue(Files.exists(src), "no data loss after crash at " + stop);
@@ -124,7 +124,7 @@ class TransactionTest {
         Path work = dir.resolve("work");
         int exit = runCrashMain(work, "COMMITTED", src, kek);
         assertEquals(137, exit);
-        DestructionTransaction.RecoveryResult rr = DestructionTransaction.recover(work);
+        DestructionTransaction.RecoveryResult rr = DestructionTransaction.recover(work, kek);
         assertEquals(DestructionTransaction.State.COMMITTED, rr.status());
         assertFalse(rr.restored());
         assertFalse(Files.exists(src), "committed destruction is never restored");
