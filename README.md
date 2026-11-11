@@ -118,6 +118,48 @@ You need **JDK 25** and a Linux machine. The memory verifier reads `/proc/<pid>/
 it does not work on macOS or Windows. The tool reports `NOT_CHECKABLE` there. It never
 guesses.
 
+### The desktop app
+
+The app hides the machinery. The user picks one file, presses one button, and watches the
+work happen in plain language.
+
+```
+$ ./bin/jvd-desktop
+```
+
+The window shows each stage as it really happens, because the stages come from the
+transaction itself:
+
+```
+1. Checking your file — We looked at your file and started the job.
+2. Making a protected copy — We made an encrypted copy of your file. Without the key it is just noise.
+3. Destroying the original — The original file was overwritten with zeros and then deleted.
+4. Final check before we make it permanent — Everything is in order. Next we destroy the key that opens the copy.
+5. Making it permanent — We destroyed the key that could open your file's copy. Your data can no longer be read.
+6. Testing that it really cannot be read — We tried to read the copy we kept. The copy could not be read, because the key that opened it is gone.
+7. Writing the signed record — We wrote a signed record of what happened, so you can show it to anyone.
+8. Adding it to the history — We added the record to your history of destructions, countersigned by a second, independent key.
+9. Done — Your file has been destroyed and we verified it.
+```
+
+Then the window shows the proof in plain words, and states the limit next to the success
+message:
+
+```
+Record ID                 ea74b5a4-5e93-48ea-8772-f8779a543f98
+What was destroyed        212a95fa63e786353ca2ac8227a0bbaa45d3c5afd52b1966f5791e8c2128df7f
+How it was destroyed      Destroyed by making the key unreadable (the strongest method this app has)
+Did the check pass?       Yes - the app confirmed the data can no longer be read
+Signed off by a person    Waiting for a person to review and accept this record
+Signature                 Present and valid - nobody has changed this record since it was signed
+What we could not check   Copies the drive keeps for itself cannot be checked from software.
+```
+
+The app needs a display. Without one it says so and points at the command line tool
+instead of printing a stack trace.
+
+### The command line
+
 ```bash
 # Build the runnable jars (about 40 seconds)
 ./mvnw -B package
@@ -171,8 +213,9 @@ backdated record, and a forked log in 50 of 50 trials for each type.
 | `log` | The RFC 6962 Merkle log, signed checkpoints, witness co-signature, proofs | 6 |
 | `cli` | The `jvd` command line tool | 2 |
 | `verifier-cli` | The `jvd-verify` offline verifier | 6 |
+| `gui` | The desktop app: one file, one button, plain language | 14 |
 
-The build runs 35 tests. `./mvnw -B verify` runs them.
+The build runs 49 tests. `./mvnw -B verify` runs them.
 
 ## Assurance levels
 
