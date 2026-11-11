@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: dev.jvd.device.DeviceTest
 -------------------------------------------------------------------------------
-Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.115 s -- in dev.jvd.device.DeviceTest
+Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.099 s -- in dev.jvd.device.DeviceTest
