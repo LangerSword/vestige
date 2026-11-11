@@ -123,6 +123,16 @@ guesses.
 The app hides the machinery. The user picks one file, presses one button, and watches the
 work happen in plain language.
 
+![The desktop app after a file was destroyed](docs/images/desktop-app-destroyed.png)
+
+*The desktop app, after a file was destroyed. The real window, running the real
+transaction.*
+
+![The desktop app after checking the destruction history](docs/images/desktop-app-verified.png)
+
+*The same app after the user pressed "Check my history". The record verifies against its
+signatures and the witness co-signature.*
+
 ```
 $ ./bin/jvd-desktop
 ```
