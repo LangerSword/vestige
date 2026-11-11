@@ -51,9 +51,8 @@ export function Download() {
         <div className="section-head reveal">
           <h2>Take the one that fits your machine.</h2>
           <p>
-            This page reads the release feed and resolves an artifact for the platform it
-            detects — no guessing which file is yours, and no invented download button when
-            there is nothing to download.
+            The button resolves an artifact for the platform it detects. Windows and macOS
+            have no builds yet, and the page does not invent one.
           </p>
         </div>
 
@@ -94,8 +93,8 @@ export function Download() {
               <div className="dl__empty" id="source">
                 <b>No binaries are published yet.</b>
                 <br />
-                The feed is wired and the page says so. Until a tagged build exists, the only
-                artifact is the source. It needs JDK 25 and the bundled Maven wrapper.
+                Until a tagged build exists, the only artifact is the source. It needs JDK 25
+                and the bundled Maven wrapper.
                 <br />
                 <br />
                 <code>git clone https://github.com/{REPO}.git</code>

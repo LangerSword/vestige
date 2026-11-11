@@ -17,9 +17,8 @@ export function Architecture() {
         <div className="section-head reveal">
           <h2>Nine modules. Forty-nine tests. No framework.</h2>
           <p>
-            Each module owns one claim and carries the tests that make the claim checkable.
-            The whole thing builds with the Maven wrapper and the JDK, with nothing else on
-            the classpath.
+            One module per responsibility, each with the tests that make its claim checkable.
+            The build needs the Maven wrapper and the JDK, and nothing else on the classpath.
           </p>
         </div>
 

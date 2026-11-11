@@ -43,10 +43,10 @@ export function Ladder() {
     <section className="section section--tight" id="assurance">
       <div className="shell">
         <div className="section-head reveal">
-          <h2>Every record carries the level it earned.</h2>
+          <h2>Every record states its assurance level.</h2>
           <p>
-            Not a badge on a website — a field in the signed record, set by what actually
-            happened. And every level carries the same sentence: physical media not verified.
+            The level is a field in the signed record, set by what the run did. Every level
+            carries the same sentence: physical media not verified.
           </p>
         </div>
 

@@ -83,9 +83,9 @@ export function Decisions() {
           ))}
           <article className="panel panel--end">
             <h3>
-              Everything else is
+              Scope: one file,
               <br />
-              <em>implementation.</em>
+              <em>one memory secret.</em>
             </h3>
             <p>Nine modules, forty-nine tests, no framework on the classpath.</p>
           </article>

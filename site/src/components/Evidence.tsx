@@ -18,9 +18,9 @@ export function Evidence() {
         <div className="section-head reveal">
           <h2>Verification is a machine result. Validation is a decision.</h2>
           <p>
-            NIST SP 800-88 Rev.2 keeps them apart, and so does this schema: the machine half
-            records what happened, and the other half records a named person accepting or
-            rejecting it. The library never merges the two — a record that says{" "}
+            NIST SP 800-88 Rev.2 keeps them apart, and so does this schema. One half records
+            what the machine observed. The other records a named person accepting or rejecting
+            it. A record that says{" "}
             <code style={{ fontFamily: "var(--mono)" }}>PENDING</code> is a valid record.
           </p>
         </div>
