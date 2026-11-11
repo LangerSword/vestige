@@ -80,9 +80,9 @@ jobs:
         if: steps.pages.conclusion == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
-          # The step publishes a named artifact rather than a directory. The build
-          # job uploaded the built site under this name.
-          name: site-dist
+          # The action archives the directory named here and publishes it as the
+          # Pages artifact. The site is built into site/dist.
+          path: site/dist
 
       - id: deployment
         if: steps.pages.conclusion == 'success'
