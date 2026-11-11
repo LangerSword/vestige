@@ -60,7 +60,7 @@ jobs:
     # Pages has to be switched on for the repository before this can run. When it has
     # not been, the deploy is skipped rather than failed: the site still builds, and the
     # reason is stated once instead of on every push.
-    if: github.repository_owner == 'LangerSword'
+    if: always() && needs.build.result == 'success' && github.repository_owner == 'LangerSword'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
