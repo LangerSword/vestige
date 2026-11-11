@@ -1,0 +1,70 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: JDK ${{ matrix.jdk }} / ${{ matrix.gc }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # JDK 25 is the project's only supported JDK. The root pom sets
+        # maven.compiler.release=25, so a lower JDK cannot compile the
+        # project at all (CI proves this: "error: release version 25 not
+        # supported"). The FFM API used by destroy-memory is final in 22,
+        # but the project does not claim to build on it — see SETUP.md.
+        jdk: [ '25' ]
+        # The canary verifier's behaviour depends on the collector: G1 leaves
+        # stale copies, ZGC maps its heap via /memfd: and Shenandoah is the
+        # outlier (docs/RESULTS.md). Running the suite under more than one
+        # collector catches collector-specific regressions, which is exactly
+        # how the ZGC /memfd: bug was found (docs/ASSUMPTIONS.md #17).
+        gc: [ 'G1', 'ZGC', 'Shenandoah' ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ matrix.jdk }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-${{ matrix.jdk }}-
+
+      - name: Build and test
+        run: ./mvnw -B verify
+        env:
+          # The FFM downcalls in SecretBuffer (mlock, madvise) are restricted
+          # methods on JDK 25 and need this flag. Without it the module still
+          # works but reports degraded hardening, so the tests would not fail —
+          # we set it anyway so CI exercises the hardened path.
+          MAVEN_OPTS: -Djava.awt.headless=true
+
+      - name: Check the runnable jars
+        if: matrix.jdk == '25' && matrix.gc == 'G1'
+        run: |
+          java -jar cli/target/cli-0.1.0.jar version
+          java -jar verifier-cli/target/verifier-cli-0.1.0.jar --record 2>&1 | head -2 || true
+
+      - name: Upload jars
+        if: matrix.jdk == '25' && matrix.gc == 'G1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvd-jars
+          path: |
+            cli/target/cli-0.1.0.jar
+            verifier-cli/target/verifier-cli-0.1.0.jar

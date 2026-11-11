@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# jvd-desktop — the desktop app.
+#
+# The app hides the machinery: the user picks a file, presses one button, and
+# the destruction runs with plain-language feedback. The command line tools
+# remain the way to script the same work.
+#
+# The app is a Swing application, so it needs a display. On a machine without
+# one it exits with a message that points at the command line tools instead of
+# throwing a stack trace.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(dirname "$here")"
+
+jar="$root/gui/target/gui-0.1.0.jar"
+if [[ ! -f "$jar" ]]; then
+  echo "jvd-desktop: jar not found at $jar" >&2
+  echo "jvd-desktop: build it first with  ./mvnw -B package" >&2
+  exit 2
+fi
+
+exec java --enable-native-access=ALL-UNNAMED -jar "$jar" "$@"

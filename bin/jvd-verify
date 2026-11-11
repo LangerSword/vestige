@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# jvd-verify — offline evidence verifier.
+#
+# The verifier trusts nothing the operator's tool printed. It recomputes the
+# Merkle root from the stored leaves, checks the checkpoint signature and the
+# witness co-signature, verifies every leaf's inclusion proof, checks record
+# timestamp monotonicity, and compares a second checkpoint for fork detection.
+#
+# It makes no network calls: the jars are shaded, so one file is enough.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(dirname "$here")"
+
+jar="$root/verifier-cli/target/verifier-cli-0.1.0.jar"
+if [[ ! -f "$jar" ]]; then
+  echo "jvd-verify: jar not found at $jar" >&2
+  echo "jvd-verify: build it first with  ./mvnw -B package" >&2
+  exit 2
+fi
+
+exec java -jar "$jar" "$@"

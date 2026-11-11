@@ -1,0 +1,5 @@
+dev/jvd/log/PersistentLog.class
+dev/jvd/log/Checkpoint.class
+dev/jvd/log/MerkleLog$ConsistencyNode.class
+dev/jvd/log/MerkleLog.class
+dev/jvd/log/MerkleLog$ProofNode.class

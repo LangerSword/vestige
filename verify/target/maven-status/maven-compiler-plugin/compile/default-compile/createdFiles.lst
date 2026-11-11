@@ -1,0 +1,8 @@
+dev/jvd/verify/CanaryVerifier$Status.class
+dev/jvd/verify/Canary.class
+dev/jvd/verify/ProcScanner.class
+dev/jvd/verify/CanaryVerifier$Result.class
+dev/jvd/verify/CanaryVerifier$VerificationOutcome.class
+dev/jvd/verify/ProcScanner$ScanException.class
+dev/jvd/verify/VictimMain.class
+dev/jvd/verify/CanaryVerifier.class

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent><groupId>dev.jvd</groupId><artifactId>jverifydestroy</artifactId><version>0.1.0</version></parent>
+  <artifactId>cli</artifactId>
+  <dependencies>
+    <dependency><groupId>dev.jvd</groupId><artifactId>destroy-memory</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>destroy-file</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>evidence</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>log</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>txn</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>verify</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>device</artifactId></dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <!--
+        Produces one self-contained runnable jar: `java -jar cli-0.1.0.jar version`.
+
+        Without this, the jar is a thin 8 KB archive with no Main-Class, so a user
+        must assemble a seven-entry classpath by hand (see SETUP.md). Shipping a
+        runnable artifact is what makes the tool usable by someone who did not
+        clone the repository. Shade also merges the module jars and their
+        dependencies into one file, so `jvd` is a single artefact to copy.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>dev.jvd.cli.Main</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

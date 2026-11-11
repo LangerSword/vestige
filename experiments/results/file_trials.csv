@@ -1,0 +1,4 @@
+method,medium,n,found,note
+file-delete-only,ext4-image-debugfs,200,200,unlinked blocks scanned raw in image
+file-overwrite-1pass,btrfs-logical-readback,200,0,COW old copies NOT_CHECKABLE (H6)
+file-overwrite-7pass,btrfs-logical-readback,200,0,COW old copies NOT_CHECKABLE (H6)

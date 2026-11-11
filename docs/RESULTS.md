@@ -1,0 +1,61 @@
+# RESULTS — generated only from real runs
+
+Environment: Temurin OpenJDK 25.0.5+8 LTS, Linux 7.0 x86_64, victim heap `-Xmx64m`, 32-byte canaries, parent process scans child JVM `/proc/<pid>/mem` (anonymous + `/memfd:` regions; library mappings skipped). Compiled from the CSVs in `experiments/results/`; the generator was removed and the data kept. **Logical-level only — physical media is never verified.**
+
+## Memory: false-assurance rate by GC × method (tiered JIT)
+
+False assurance = the method claims success (wipe methods always do) ∧ the validator finds the canary immediately after destruction. Each trial's secret survived one promotion GC under churn *before* the method ran — the realistic case of a secret that has lived in the heap. `drop` is the no-wipe baseline (its found rate is also the validator's sensitivity).
+
+| GC | drop (baseline) | fill (Arrays.fill) | multipass (7×) | fill + 2×GC after |
+|---|---|---|---|---|
+| Serial | 200/200 = 100.0% [98.1–100.0] | 200/200 = 100.0% [98.1–100.0] | 200/200 = 100.0% [98.1–100.0] | 200/200 = 100.0% [98.1–100.0] |
+| Parallel | 200/200 = 100.0% [98.1–100.0] | 200/200 = 100.0% [98.1–100.0] | 200/200 = 100.0% [98.1–100.0] | 200/200 = 100.0% [98.1–100.0] |
+| G1 | 200/200 = 100.0% [98.1–100.0] | 199/200 = 99.5% [97.2–99.9] | 199/200 = 99.5% [97.2–99.9] | 199/200 = 99.5% [97.2–99.9] |
+| Z | 200/200 = 100.0% [98.1–100.0] | 197/200 = 98.5% [95.7–99.5] | 197/200 = 98.5% [95.7–99.5] | 99/200 = 49.5% [42.6–56.4] |
+| Shenandoah | 200/200 = 100.0% [98.1–100.0] | 2/200 = 1.0% [0.3–3.6] | 2/200 = 1.0% [0.3–3.6] | 2/200 = 1.0% [0.3–3.6] |
+
+## Memory: fill under the interpreter (`-Xint`) vs tiered
+
+| GC | tiered | -Xint |
+|---|---|---|
+| Serial | 200/200 = 100.0% | 200/200 = 100.0% |
+| Parallel | 200/200 = 100.0% | 200/200 = 100.0% |
+| G1 | 199/200 = 99.5% | 199/200 = 99.5% |
+| Z | 197/200 = 98.5% | 199/200 = 99.5% |
+| Shenandoah | 2/200 = 1.0% | 2/200 = 1.0% |
+
+**Reading the matrix.** (1) Validator sensitivity is 100% (200/200) in every `drop` cell: when a secret is not wiped, the scanner finds it — the negative results below are not scanner blindness. (2) After a single promotion GC, wiping the live array leaves a findable stale copy in ~99–100% of trials on Serial, Parallel, G1 and ZGC — extra passes change nothing (multipass ≈ fill everywhere), and JIT mode changes nothing (the residue is a GC copy, not a JIT artefact — consistent with spike H1 finding no dead-store elimination). (3) Shenandoah is the outlier: 2/200 (1.0%) across all wipe methods. (4) ZGC `fillgc` drops to 99/200 (49.5%): forcing two more GCs after wiping halves ZGC residue but leaves half. (5) No memory wipe cell measured 0, so no rule-of-three bound is needed here; Shenandoah's 2/200 is reported as measured, not rounded to zero.
+
+## Files (N=200 per method)
+
+| Method | Medium | Found | Note |
+|---|---|---|---|
+| file-delete-only | ext4-image-debugfs | 200/200 | unlinked blocks scanned raw in image |
+| file-overwrite-1pass | btrfs-logical-readback | 0/200 | COW old copies NOT_CHECKABLE (H6) |
+| file-overwrite-7pass | btrfs-logical-readback | 0/200 | COW old copies NOT_CHECKABLE (H6) |
+
+Delete-only leaves everything (200/200 in the raw ext4 image). Overwrite reads back clean at the **logical** level in 200/200 for both 1-pass and 7-pass — i.e. extra passes buy nothing measurable at logical level, and COW/physical copies remain NOT_CHECKABLE (spike H6).
+
+## Log tamper detection (jvd-verify, N=50 per type)
+
+| Tamper | Detected |
+|---|---|
+| edit | 50/50 |
+| delete | 50/50 |
+| backdate | 50/50 |
+| fork | 50/50 |
+
+Method note (kept honest): leaves are stored Base64-encoded; the first backdate batch silently failed to modify anything (a regex aimed at raw JSON) and detected 0/50 *because nothing had been tampered*. The tamper was fixed to decode/modify/re-encode and rerun: 50/50. The verifier was right both times.
+
+## Overhead (median of 20 runs, includes JVM startup of the CLI process)
+
+| Operation | Median |
+|---|---|
+| destroy-file-1MiB (full txn: vault+scrub+commit+evidence+log) | 604.9 ms |
+| destroy-file-10MiB (full txn: vault+scrub+commit+evidence+log) | 1028.2 ms |
+
+## Experiment incidents (all caught by controls, all disclosed)
+1. Victim v1 held the raw pattern in `main`'s frame — every cell read 200/200 including wiped ones. Caught because Serial/fill at 200/200 was implausible; fixed by generating the pattern inside the trial frame.
+2. Victim v2 cloned the pattern and wiped only the clone — same symptom, same catch. Fixed: the secret *is* the pattern; only its hex encoding leaves the frame.
+3. ZGC maps its heap via `/memfd:java_heap`; a scanner skipping all file-backed mappings finds nothing under ZGC, including unwiped controls (drop read 0/20 in smoke). Fixed by including `/memfd:` regions. **The same skip rule exists in the shipped `verify` module's ProcScanner** — there, the positive control fails too, so runs report INVALID rather than a false NOT_FOUND (the control design working as intended), but ZGC targets deserve a scanner fix; logged as a known issue, not silently patched after the fact.
+4. Backdate batch 1 no-op (above).

@@ -1,0 +1,8 @@
+dev/jvd/device/RawMediaScanner$Result.class
+dev/jvd/device/NvmeController.class
+dev/jvd/device/Sanitizer$Pathish.class
+dev/jvd/device/Sanitizer$Action.class
+dev/jvd/device/RawMediaScanner.class
+dev/jvd/device/NvmeController$Identity.class
+dev/jvd/device/Sanitizer.class
+dev/jvd/device/Sanitizer$Outcome.class

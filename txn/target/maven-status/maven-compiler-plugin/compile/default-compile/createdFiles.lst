@@ -1,0 +1,5 @@
+dev/jvd/txn/DestructionTransaction.class
+dev/jvd/txn/DestructionTransaction$EvidenceSink.class
+dev/jvd/txn/DestructionTransaction$State.class
+dev/jvd/txn/DestructionTransaction$RecoveryResult.class
+dev/jvd/txn/CrashMain.class

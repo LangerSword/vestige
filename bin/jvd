@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# jvd — operator command line for verifiable secure data destruction.
+#
+# This wrapper exists so a user does not have to know that the FFM downcalls in
+# the destroy-memory module (mlock, madvise) are restricted methods on JDK 25.
+# Without --enable-native-access the module still works, but it reports
+# degraded hardening, so we set the flag here rather than making every caller
+# discover it.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(dirname "$here")"
+
+jar="$root/cli/target/cli-0.1.0.jar"
+if [[ ! -f "$jar" ]]; then
+  echo "jvd: jar not found at $jar" >&2
+  echo "jvd: build it first with  ./mvnw -B package" >&2
+  exit 2
+fi
+
+exec java --enable-native-access=ALL-UNNAMED -jar "$jar" "$@"

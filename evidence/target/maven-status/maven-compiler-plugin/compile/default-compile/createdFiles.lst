@@ -1,0 +1,9 @@
+dev/jvd/evidence/EvidenceRecord$CanaryResult.class
+dev/jvd/evidence/Signer.class
+dev/jvd/evidence/EvidenceRecord$Method.class
+dev/jvd/evidence/EvidenceRecord$ValidationDecision.class
+dev/jvd/evidence/EvidenceRecord$AssuranceLevel.class
+dev/jvd/evidence/EvidenceRecord.class
+dev/jvd/evidence/JsonMini.class
+dev/jvd/evidence/EvidenceRecord$VerificationStatus.class
+dev/jvd/evidence/Assurance.class
