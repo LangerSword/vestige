@@ -10,6 +10,7 @@
     <dependency><groupId>dev.jvd</groupId><artifactId>log</artifactId></dependency>
     <dependency><groupId>dev.jvd</groupId><artifactId>txn</artifactId></dependency>
     <dependency><groupId>dev.jvd</groupId><artifactId>verify</artifactId></dependency>
+    <dependency><groupId>dev.jvd</groupId><artifactId>device</artifactId></dependency>
   </dependencies>
   <build>
     <plugins>

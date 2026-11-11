@@ -57,7 +57,7 @@ public final class Main {
 
     public static int run(String[] args, PrintStream out) {
         if (args.length == 0) {
-            out.println("usage: jvd <destroy-file|verify|recover|verify-memory|version>");
+            out.println("usage: jvd <destroy-file|verify|recover|verify-memory|device|version>");
             return 2;
         }
         try {
@@ -67,12 +67,159 @@ public final class Main {
                 case "destroy-file" -> destroyFile(args, out);
                 case "verify" -> verifyLog(args, out);
                 case "recover" -> recover(args, out);
+                case "device" -> device(args, out);
                 default -> { out.println("unknown subcommand: " + args[0]); yield 2; }
             };
         } catch (Exception e) {
             out.println("ERROR: " + e);
             return 1;
         }
+    }
+
+    /**
+     * The device commands: what the drives on this machine can do, and whether the
+     * data is still on the flash.
+     *
+     * <p>These are the commands that make the physical media identifiable. Everything
+     * else in jvd reads a file; these read the device.
+     */
+    private static int device(String[] args, PrintStream out) throws Exception {
+        String sub = args.length > 1 ? args[1] : "list";
+        return switch (sub) {
+            case "list" -> deviceList(out);
+            case "scan" -> deviceScan(args, out);
+            case "sanitize-status" -> deviceSanitizeStatus(args, out);
+            case "sanitize" -> deviceSanitize(args, out);
+            default -> {
+                out.println("usage: jvd device <list|scan|sanitize-status|sanitize>");
+                yield 2;
+            }
+        };
+    }
+
+    private static int deviceList(PrintStream out) {
+        var controllers = dev.jvd.device.NvmeController.controllers();
+        if (controllers.isEmpty()) {
+            out.println("no NVMe controllers were found on this machine");
+            return 2;
+        }
+        for (String c : controllers) {
+            var id = dev.jvd.device.NvmeController.identify(c);
+            out.println(c);
+            out.println("  model      = " + id.modelNumber());
+            out.println("  serial     = " + id.serialNumber());
+            out.println("  firmware   = " + id.firmware());
+            out.println("  namespace  = " + id.namespaceBytes() + " bytes");
+            out.println("  sanitize   = " + id.strongestSupported()
+                    + "  (blockErase=" + id.blockEraseSupported()
+                    + " overwrite=" + id.overwriteSupported()
+                    + " cryptoErase=" + id.cryptoEraseSupported() + ")");
+        }
+        return 0;
+    }
+
+    /**
+     * Scans the raw media of a device for a canary.
+     *
+     * <p>The canary is given as hex. Reading a block device needs root, and without it
+     * the command says so instead of reporting a clean result.
+     */
+    private static int deviceScan(String[] args, PrintStream out) throws Exception {
+        Path device = null;
+        String canaryHex = null;
+        int tolerance = dev.jvd.device.RawMediaScanner.DEFAULT_TOLERANCE;
+        // A namespace is hundreds of gigabytes. Reading all of it takes longer than
+        // anybody will wait, so the scan is bounded by default and the bound is
+        // reported in the output.
+        long limit = 4L * 1024 * 1024 * 1024;
+        for (int i = 2; i < args.length; i++) {
+            switch (args[i]) {
+                case "--device" -> device = Path.of(args[++i]);
+                case "--canary" -> canaryHex = args[++i];
+                case "--tolerance" -> tolerance = Integer.parseInt(args[++i]);
+                case "--limit-gib" -> limit = Long.parseLong(args[++i]) * 1024L * 1024 * 1024;
+                default -> { }
+            }
+        }
+        if (device == null || canaryHex == null) {
+            out.println("usage: jvd device scan --device /dev/nvme0n1 --canary <hex> "
+                    + "[--tolerance N] [--limit-gib N]");
+            return 2;
+        }
+        byte[] canary = HexFormat.of().parseHex(canaryHex.trim());
+        var r = dev.jvd.device.RawMediaScanner.scan(device, canary, tolerance, limit);
+        if (!r.checkable()) {
+            out.println("NOT CHECKABLE: " + r.reason());
+            return 2;
+        }
+        out.println("device   = " + device);
+        out.println("scanned  = " + r.bytesScanned() + " bytes (" + r.sectorsScanned() + " sectors)");
+        if (r.bytesScanned() < limit) {
+            out.println("note     = the scan covered the first " + (r.bytesScanned() / (1024 * 1024 * 1024))
+                    + " GiB of the device; a canary outside that range was not looked for");
+        }
+        out.println("tolerance= " + r.tolerance() + " byte(s)");
+        out.println("canary   = " + (r.canaryFound()
+                ? "FOUND on the media, " + r.matches() + " match(es)"
+                : "not present on the media"));
+        out.println("result   = " + (r.canaryFound()
+                ? "the data is still on the flash"
+                : "the data is not on the flash"));
+        return r.canaryFound() ? 1 : 0;
+    }
+
+    private static int deviceSanitizeStatus(String[] args, PrintStream out) {
+        String controller = null;
+        for (int i = 2; i < args.length; i++) {
+            if (args[i].equals("--controller")) controller = args[++i];
+        }
+        if (controller == null) {
+            out.println("usage: jvd device sanitize-status --controller /dev/nvme0");
+            return 2;
+        }
+        out.println(dev.jvd.device.Sanitizer.status(controller));
+        return 0;
+    }
+
+    /**
+     * Asks a controller to sanitize itself.
+     *
+     * <p>Needs the confirmation token, and refuses while the drive is mounted.
+     */
+    private static int deviceSanitize(String[] args, PrintStream out) throws Exception {
+        String controller = null;
+        String action = "block-erase";
+        String confirm = null;
+        for (int i = 2; i < args.length; i++) {
+            switch (args[i]) {
+                case "--controller" -> controller = args[++i];
+                case "--action" -> action = args[++i];
+                case "--confirm" -> confirm = args[++i];
+                default -> { }
+            }
+        }
+        if (controller == null) {
+            out.println("usage: jvd device sanitize --controller /dev/nvme0 "
+                    + "--action block-erase|crypto-erase|overwrite --confirm " 
+                    + dev.jvd.device.Sanitizer.CONFIRM_TOKEN);
+            return 2;
+        }
+        dev.jvd.device.Sanitizer.Action act;
+        try {
+            act = dev.jvd.device.Sanitizer.Action.valueOf(
+                    action.toUpperCase(java.util.Locale.ROOT).replace('-', '_'));
+        } catch (IllegalArgumentException e) {
+            out.println("unknown sanitize action: " + action);
+            return 2;
+        }
+        var outcome = dev.jvd.device.Sanitizer.sanitize(controller, act, confirm);
+        out.println("controller = " + controller);
+        out.println("action     = " + act.label());
+        out.println("started    = " + outcome.started());
+        out.println("completed  = " + outcome.completed());
+        if (outcome.reason() != null) out.println("reason     = " + outcome.reason());
+        if (!outcome.output().isBlank()) out.println(outcome.output());
+        return outcome.completed() ? 0 : 1;
     }
 
     private static int verifyMemory(String[] args, PrintStream out) {

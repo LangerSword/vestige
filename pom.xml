@@ -20,6 +20,7 @@
     <module>verifier-cli</module>
     <module>cli</module>
     <module>gui</module>
+    <module>device</module>
   </modules>
 
   <properties>
@@ -43,6 +44,7 @@
       <dependency><groupId>dev.jvd</groupId><artifactId>log</artifactId><version>${project.version}</version></dependency>
       <dependency><groupId>dev.jvd</groupId><artifactId>txn</artifactId><version>${project.version}</version></dependency>
       <dependency><groupId>dev.jvd</groupId><artifactId>verify</artifactId><version>${project.version}</version></dependency>
+      <dependency><groupId>dev.jvd</groupId><artifactId>device</artifactId><version>${project.version}</version></dependency>
     </dependencies>
   </dependencyManagement>
 
