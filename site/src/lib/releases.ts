@@ -9,6 +9,17 @@
 
 export type Platform = "linux" | "windows" | "macos" | "any";
 
+/**
+ * What an artifact is, beyond the file format.
+ *
+ * <p>A release carries three jars: the command line tool, the offline verifier, and
+ * the desktop app. They share one extension and one platform, so classifying by
+ * extension alone makes them indistinguishable, and a page that lists "a jar" can
+ * only offer one of them. The name says which is which, so the name is what the page
+ * reads.
+ */
+export type Kind = "cli" | "verifier" | "desktop" | "bundle" | "checksums" | "other";
+
 export type Asset = {
   name: string;
   url: string;
@@ -16,6 +27,7 @@ export type Asset = {
   platform: Platform;
   arch: string;
   format: string;
+  kind: Kind;
   sha256?: string;
 };
 
@@ -64,6 +76,22 @@ export function classify(name: string): { platform: Platform; format: string; ar
 
 type RawAsset = { name: string; browser_download_url?: string; url?: string; size?: number; digest?: string };
 
+const KINDS: Array<[RegExp, Kind]> = [
+  [/^jvd-desktop/i, "desktop"],
+  [/^jvd-verify/i, "verifier"],
+  [/^jvd-web/i, "desktop"],
+  [/^jvd(?!-)/i, "cli"],
+  [/checksums?\$/i, "checksums"],
+  [/\.tar\.gz\$/i, "bundle"],
+];
+
+function kindOf(name: string): Kind {
+  for (const [re, kind] of KINDS) {
+    if (re.test(name)) return kind;
+  }
+  return "other";
+}
+
 function normalise(raw: RawAsset): Asset {
   const { platform, format, arch } = classify(raw.name);
   const digest = raw.digest?.startsWith("sha256:") ? raw.digest.slice(7) : undefined;
@@ -74,6 +102,7 @@ function normalise(raw: RawAsset): Asset {
     platform,
     arch,
     format,
+    kind: kindOf(raw.name),
     sha256: digest,
   };
 }
@@ -165,7 +194,15 @@ export function detect(): Detected {
   return { platform, arch, label };
 }
 
-/** Best asset for this machine, or undefined when the release has nothing applicable. */
+/**
+ * The best asset for this machine.
+ *
+ * <p>For a jar, the command line tool is the one a person downloads first, so it is
+ * preferred over the verifier and the desktop app. The others are offered by name in
+ * the page's own list, because they answer different questions: the verifier is for
+ * somebody checking a receipt they were handed, and the desktop app is for somebody
+ * who wants a window instead of a terminal.
+ */
 export function pick(release: Release | undefined, target: Detected): Asset | undefined {
   if (!release) return undefined;
   const exact = release.assets.find(
@@ -174,7 +211,34 @@ export function pick(release: Release | undefined, target: Detected): Asset | un
   if (exact) return exact;
   const loose = release.assets.find((a) => a.platform === target.platform);
   if (loose) return loose;
-  return release.assets.find((a) => a.platform === "any");
+  // A jar carries no platform, so the command line tool is the sensible default
+  // rather than whichever jar happened to be listed first.
+  return release.assets.find((a) => a.kind === "cli")
+    ?? release.assets.find((a) => a.platform === "any");
+}
+
+/** Every artifact of a release except the one already offered as the main download. */
+export function others(release: Release | undefined, main: Asset | undefined): Asset[] {
+  if (!release) return [];
+  return release.assets.filter(
+    (a) => a !== main && a.kind !== "checksums" && a.kind !== "other",
+  );
+}
+
+/** The one-line description shown next to an artifact. */
+export function describe(asset: Asset): string {
+  switch (asset.kind) {
+    case "cli":
+      return "the command line tool";
+    case "verifier":
+      return "the offline verifier, for checking a receipt you were handed";
+    case "desktop":
+      return "the desktop app";
+    case "bundle":
+      return "everything in one archive";
+    default:
+      return asset.format;
+  }
 }
 
 export function human(size: number): string {
