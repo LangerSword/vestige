@@ -57,10 +57,9 @@ jobs:
     name: publish to pages
     needs: build
     runs-on: ubuntu-latest
-    # Pages has to be switched on for the repository before this can run.
-    # When it has not been, the deploy is skipped rather than failed: the
-    # site still builds, and the reason is stated once instead of on every
-    # push.
+    # Pages has to be switched on for the repository before this can run. When it has
+    # not been, the deploy is skipped rather than failed: the site still builds, and the
+    # reason is stated once instead of on every push.
     if: github.repository_owner == 'LangerSword'
     environment:
       name: github-pages
@@ -68,15 +67,20 @@ jobs:
     steps:
       - name: Configure Pages
         id: pages
+        # The step is allowed to fail so that a repository without Pages still gets a
+        # green build. Its outcome is checked below, so the failure is contained.
         continue-on-error: true
         uses: actions/configure-pages@v5
 
       - name: Upload the Pages artifact
-        if: steps.pages.outcome == 'success'
+        # The conclusion is checked rather than the outcome: a step that was allowed to
+        # fail reports "failure" as its outcome even when it succeeded, which would skip
+        # the upload that actually publishes the site.
+        if: steps.pages.conclusion == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/dist
 
       - id: deployment
-        if: steps.pages.outcome == 'success'
+        if: steps.pages.conclusion == 'success'
         uses: actions/deploy-pages@v4
