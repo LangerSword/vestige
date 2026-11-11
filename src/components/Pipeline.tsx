@@ -85,7 +85,7 @@ export function Pipeline() {
         </div>
       </div>
 
-      <div ref={wrap} style={{ minHeight: "320svh" }}>
+      <div ref={wrap} style={{ minHeight: "150svh" }}>
         <div style={{ position: "sticky", top: 0, minHeight: "100svh", display: "flex", alignItems: "center" }}>
           <div className="shell">
             <div className="pipe">

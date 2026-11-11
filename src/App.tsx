@@ -1,5 +1,11 @@
-import { useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import { Nav } from "./components/Nav";
+// three.js stays in its own chunk; the page is readable without it
+const Scene = lazy(() => import("./three/Scene").then((m) => ({ default: m.Scene })));
+import { Cursor } from "./components/Cursor";
+import { ChapterRail } from "./components/ChapterRail";
+import { Decisions } from "./components/Decisions";
+import { Marquee } from "./components/Marquee";
 import { Hero } from "./components/Hero";
 import { Proof } from "./components/Proof";
 import { Shred } from "./components/Shred";
@@ -40,11 +46,18 @@ export function App() {
         Skip to content
       </a>
 
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
+      <Cursor />
+      <ChapterRail />
       <Nav />
       <main>
         <Hero />
         <Proof />
         <Shred />
+        <Marquee />
+        <Decisions />
         <Pipeline />
         <Measurements />
         <Tamper />
