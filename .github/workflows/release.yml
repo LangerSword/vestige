@@ -1,0 +1,63 @@
+name: release
+
+# Publishes the binaries the hosted site links to.
+#
+# The site reads GitHub Releases, so a tagged release is what turns into a
+# download button. The workflow builds the jars, packages them with the docs
+# a user needs, checksums them, and attaches everything to the release.
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (for example v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Build and test
+        run: ./mvnw -B -q verify
+
+      - name: Package
+        run: ./scripts/build-release.sh
+
+      - name: Read the version
+        id: ver
+        run: echo "version=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)" >> "$GITHUB_OUTPUT"
+
+      # The jars are the product. A release where the jar does not run is worse
+      # than no release, so each one is started before it is published.
+      - name: Check the artifacts
+        run: |
+          java -jar "dist/jvd-${{ steps.ver.outputs.version }}.jar" version
+          java -jar "dist/jvd-verify-${{ steps.ver.outputs.version }}.jar" 2>&1 | head -1 || true
+          java -jar "dist/jvd-desktop-${{ steps.ver.outputs.version }}.jar" 2>&1 | head -1 || true
+          cd dist && sha256sum -c SHA256SUMS
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.jar
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          generate_release_notes: true
+          fail_on_unmatched_files: true

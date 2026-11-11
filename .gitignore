@@ -21,3 +21,6 @@ __pycache__/
 site/node_modules/
 site/dist/
 site/.wrangler/
+
+# Release artifacts, produced by scripts/build-release.sh
+dist/
