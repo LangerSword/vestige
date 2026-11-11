@@ -73,6 +73,12 @@ jobs:
         continue-on-error: true
         uses: actions/configure-pages@v5
 
+      - name: Download the built site
+        uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: _site
+
       - name: Upload the Pages artifact
         # The conclusion is checked rather than the outcome: a step that was allowed to
         # fail reports "failure" as its outcome even when it succeeded, which would skip
@@ -80,9 +86,9 @@ jobs:
         if: steps.pages.conclusion == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
-          # The action archives the directory named here and publishes it as the
-          # Pages artifact. The site is built into site/dist.
-          path: site/dist
+          # The action archives the directory named here and publishes it as the Pages
+          # artifact.
+          path: _site
 
       - id: deployment
         if: steps.pages.conclusion == 'success'
