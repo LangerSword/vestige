@@ -42,12 +42,43 @@ export type Release = {
 
 export type ReleaseState = {
   status: "loading" | "ready" | "empty" | "error";
-  source: "api" | "github" | "none";
+  source: "api" | "github" | "local" | "none";
   releases: Release[];
   detail?: string;
 };
 
 export const REPO = "asingh1192/Vestige";
+
+/**
+ * GitHub allows 60 unauthenticated requests an hour per IP, and a page that
+ * asks on every load will spend that on a handful of visits — or on one
+ * visitor behind a shared address. The answer is cached in the browser for a
+ * few minutes, and an empty result is not cached, so a transient 403 does not
+ * stick. The Worker, when it is deployed, caches at the edge instead.
+ */
+const CACHE_KEY = "vestige:releases:v1";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+function readCache(): Release[] | null {
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; releases: Release[] };
+    if (!parsed?.at || Date.now() - parsed.at > CACHE_TTL_MS) return null;
+    return Array.isArray(parsed.releases) && parsed.releases.length ? parsed.releases : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(releases: Release[]): void {
+  if (!releases.length) return;
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), releases }));
+  } catch {
+    /* storage disabled — the network path still works */
+  }
+}
 
 const FORMATS: Array<[RegExp, Platform, string]> = [
   [/\.appimage$/i, "linux", "AppImage"],
@@ -120,11 +151,15 @@ function okay(payload: unknown): payload is { releases: Release[] } {
 }
 
 export async function fetchReleases(): Promise<ReleaseState> {
+  const cached = readCache();
+  if (cached) return { status: "ready", source: "local", releases: cached };
+
   try {
     const res = await fetch("/api/releases", { headers: { accept: "application/json" } });
     if (res.ok) {
       const data: unknown = await res.json();
       if (okay(data) && data.releases.length) {
+        writeCache(data.releases);
         return { status: "ready", source: "api", releases: data.releases };
       }
       if (okay(data)) {
@@ -152,6 +187,7 @@ export async function fetchReleases(): Promise<ReleaseState> {
         prerelease: r.prerelease,
         assets: r.assets.map(normalise),
       }));
+      if (releases.length) writeCache(releases);
       return {
         status: releases.length ? "ready" : "empty",
         source: "github",
