@@ -41,4 +41,43 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!--
+      The scripted end-to-end run: it opens the real window under a virtual
+      display, presses the real button, and saves a screenshot.
+
+      It is a development aid, not a test: it needs a display, so it must never
+      run in the headless CI suite. Keeping it in this profile means it is
+      compiled only when someone asks for it, and it stays out of the shipped
+      jar.
+
+        DISPLAY=:99 ./mvnw -B -Pgui-dev package
+        DISPLAY=:99 java -cp gui/target/classes:… dev.jvd.gui.ScriptedRun /tmp/shot.png
+    -->
+    <profile>
+      <id>gui-dev</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.0</version>
+            <executions>
+              <execution>
+                <id>add-dev-source</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources>
+                    <source>src/dev/java</source>
+                  </sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
