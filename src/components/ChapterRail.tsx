@@ -6,9 +6,8 @@ const CHAPTERS = [
   { id: "decisions", label: "Decisions" },
   { id: "meas", label: "Measurements" },
   { id: "tamper", label: "Tamper" },
-  { id: "evidence", label: "Evidence" },
-  { id: "limits", label: "Limits" },
   { id: "app", label: "App" },
+  { id: "reference", label: "Reference" },
   { id: "download", label: "Download" },
 ];
 

@@ -1376,6 +1376,15 @@ main, .foot { position: relative; z-index: 1; }
 html.has-cursor,
 html.has-cursor * { cursor: none !important; }
 
+/* The layers exist in the DOM before the effect runs, and on touch the effect
+   never runs at all — so they are hidden unless the page has confirmed a real
+   hovering pointer. Specificity has to beat the rules below that set display. */
+html:not(.has-cursor) .cursor-dot,
+html:not(.has-cursor) .cursor-ring { display: none !important; }
+
+html.has-cursor .cursor-dot { display: block; }
+html.has-cursor .cursor-ring { display: grid; }
+
 .cursor-dot {
   position: fixed;
   left: 0;
@@ -1635,6 +1644,52 @@ html.has-cursor * { cursor: none !important; }
 .tick__row i { font-style: normal; color: var(--green); opacity: 0.55; }
 
 @keyframes slide { to { transform: translateX(-50%); } }
+
+/* ---------- reference tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0.85rem 1.1rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.tab:hover { color: var(--paper-dim); }
+
+.tab[aria-selected="true"] {
+  color: var(--paper);
+  border-bottom-color: var(--green);
+}
+
+.tab span {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.58rem;
+  color: var(--green);
+  opacity: 0.7;
+}
+
+.tabpanel > section { padding: 0 !important; }
+.tabpanel .section-head { display: none; }
+.tabpanel > section > .shell { padding-inline: 0; max-width: none; }
 
 /* ---------- phone density ---------- */
 

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Nav } from "./components/Nav";
 // three.js stays in its own chunk; the page is readable without it
 const Scene = lazy(() => import("./three/Scene").then((m) => ({ default: m.Scene })));
@@ -12,17 +12,15 @@ import { Shred } from "./components/Shred";
 import { Pipeline } from "./components/Pipeline";
 import { Measurements } from "./components/Measurements";
 import { Tamper } from "./components/Tamper";
-import { Evidence } from "./components/Evidence";
-import { Ladder } from "./components/Ladder";
-import { Limits } from "./components/Limits";
 import { Gallery } from "./components/Gallery";
-import { Architecture } from "./components/Architecture";
+import { Reference, type RefTab } from "./components/Reference";
 import { Download } from "./components/Download";
 import { Footer } from "./components/Footer";
 import { setupReveals } from "./lib/motion";
 
 export function App() {
   const root = useRef<HTMLDivElement | null>(null);
+  const [tab, setTab] = useState<RefTab>("evidence");
 
   useEffect(() => {
     if (!root.current) return;
@@ -51,7 +49,7 @@ export function App() {
       </Suspense>
       <Cursor />
       <ChapterRail />
-      <Nav />
+      <Nav onTab={setTab} />
       <main>
         <Hero />
         <Proof />
@@ -61,11 +59,8 @@ export function App() {
         <Pipeline />
         <Measurements />
         <Tamper />
-        <Evidence />
-        <Ladder />
-        <Limits />
         <Gallery />
-        <Architecture />
+        <Reference tab={tab} onTab={setTab} />
         <Download />
       </main>
       <Footer />

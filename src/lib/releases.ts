@@ -64,6 +64,33 @@ export function classify(name: string): { platform: Platform; format: string; ar
 
 type RawAsset = { name: string; browser_download_url?: string; url?: string; size?: number; digest?: string };
 
+/**
+ * What an artifact is, beyond the file format.
+ *
+ * <p>A release carries three jars: the command line tool, the offline verifier, and
+ * the desktop app. They share one extension and one platform, so classifying by
+ * extension alone makes them indistinguishable, and a page that lists "a jar" can
+ * only offer one of them. The name says which is which, so the name is what the page
+ * reads.
+ */
+export type Kind = "cli" | "verifier" | "desktop" | "bundle" | "checksums" | "other";
+
+const KINDS: Array<[RegExp, Kind]> = [
+  [/^jvd-desktop/i, "desktop"],
+  [/^jvd-verify/i, "verifier"],
+  [/^jvd-web/i, "desktop"],
+  [/^jvd(?!-)/i, "cli"],
+  [/checksums?\$/i, "checksums"],
+  [/\.tar\.gz\$/i, "bundle"],
+];
+
+function kindOf(name: string): Kind {
+  for (const [re, kind] of KINDS) {
+    if (re.test(name)) return kind;
+  }
+  return "other";
+}
+
 function normalise(raw: RawAsset): Asset {
   const { platform, format, arch } = classify(raw.name);
   const digest = raw.digest?.startsWith("sha256:") ? raw.digest.slice(7) : undefined;
@@ -74,6 +101,7 @@ function normalise(raw: RawAsset): Asset {
     platform,
     arch,
     format,
+    kind: kindOf(raw.name),
     sha256: digest,
   };
 }
