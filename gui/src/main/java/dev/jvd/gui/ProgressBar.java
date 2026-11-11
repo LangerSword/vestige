@@ -1,7 +1,6 @@
 package dev.jvd.gui;
 
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.Timer;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -30,9 +29,6 @@ final class ProgressBar extends JComponent {
     private long lastTick = System.nanoTime();
     private final Timer timer;
 
-    /** The label that names what the bar is doing, so it cannot be read as a divider. */
-    private final JLabel caption = new JLabel("");
-
     ProgressBar() {
         setPreferredSize(new Dimension(0, 6));
         setOpaque(false);
@@ -41,9 +37,8 @@ final class ProgressBar extends JComponent {
     }
 
     /** Sets the true progress in [0,1]. The bar eases towards it; it never overshoots. */
-    void setProgress(double value, String label) {
+    void setProgress(double value) {
         target = Math.max(0.0, Math.min(1.0, value));
-        caption.setText(label == null ? "" : label);
         if (!timer.isRunning()) {
             lastTick = System.nanoTime();
             timer.start();
@@ -52,10 +47,9 @@ final class ProgressBar extends JComponent {
     }
 
     /** Fills the bar completely and stops the animation. */
-    void finish(String label) {
+    void finish() {
         target = 1.0;
         shown = 1.0;
-        caption.setText(label == null ? "" : label);
         timer.stop();
         repaint();
     }
@@ -64,7 +58,6 @@ final class ProgressBar extends JComponent {
     void reset() {
         target = 0.0;
         shown = 0.0;
-        caption.setText("");
         timer.stop();
         repaint();
     }

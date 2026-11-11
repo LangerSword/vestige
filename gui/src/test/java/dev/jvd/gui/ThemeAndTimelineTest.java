@@ -2,7 +2,6 @@ package dev.jvd.gui;
 
 import org.junit.jupiter.api.Test;
 
-import javax.swing.JLabel;
 import java.lang.reflect.Field;
 import java.util.List;
 
@@ -87,24 +86,36 @@ class ThemeAndTimelineTest {
     }
 
     @Test
-    void theProgressBarTakesAValueAndALabel() throws Exception {
-        // The bar carries a readout so a full bar cannot be mistaken for a divider.
+    void theProgressBarTakesAValueAndNeverExceedsIt() throws Exception {
+        // The bar animates towards the value the work reports. It must never show
+        // more progress than actually happened, so the drawn value is clamped.
         var ctor = ProgressBar.class.getDeclaredConstructor();
         ctor.setAccessible(true);
         ProgressBar bar = (ProgressBar) ctor.newInstance();
-        var set = ProgressBar.class.getDeclaredMethod("setProgress", double.class, String.class);
+        var set = ProgressBar.class.getDeclaredMethod("setProgress", double.class);
         set.setAccessible(true);
-        set.invoke(bar, 0.5, "50%  Destroying the original");
+        set.invoke(bar, 0.5);
 
-        Field label = ProgressBar.class.getDeclaredField("caption");
-        label.setAccessible(true);
-        JLabel caption = (JLabel) label.get(bar);
-        assertEquals("50%  Destroying the original", caption.getText(),
-                "the readout must name the stage and show the percentage");
+        var shown = ProgressBar.class.getDeclaredField("shown");
+        shown.setAccessible(true);
+        double value = (double) shown.get(bar);
+        assertTrue(value >= 0.0 && value <= 1.0,
+                "the drawn value must stay inside 0..1, was " + value);
 
-        var finish = ProgressBar.class.getDeclaredMethod("finish", String.class);
+        var finish = ProgressBar.class.getDeclaredMethod("finish");
         finish.setAccessible(true);
-        finish.invoke(bar, "100%  Finished");
-        assertEquals("100%  Finished", caption.getText());
+        finish.invoke(bar);
+        assertEquals(1.0, (double) shown.get(bar),
+                "a finished bar is exactly full");
+    }
+
+    @Test
+    void theProgressReadoutNamesTheStageAndThePercentage() {
+        // The readout is what stops a full bar being read as a divider, so it has
+        // to carry both the number and the name of the stage.
+        String readout = Math.round(0.5 * 100) + "%  " + Friendly.plannedStages().get(2).title();
+        assertTrue(readout.contains("50%"), "the readout must show the percentage: " + readout);
+        assertTrue(readout.contains("Destroying the original"),
+                "the readout must name the stage: " + readout);
     }
 }

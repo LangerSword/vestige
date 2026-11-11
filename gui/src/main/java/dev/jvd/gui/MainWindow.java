@@ -454,8 +454,8 @@ public final class MainWindow extends JFrame {
                             timeline.markRunning(index + 1);
                         }
                         double fraction = (index + 1.0) / Friendly.plannedStages().size();
-                        progress.setProgress(fraction,
-                                Math.round(fraction * 100) + "%  " + stageName(index));
+                        progress.setProgress(fraction);
+                        progressCaption.setText(Math.round(fraction * 100) + "%  " + stageName(index));
                     }
                 }
             }
@@ -468,18 +468,22 @@ public final class MainWindow extends JFrame {
                     // The bar settles on its final value with a name, so the reader sees
                     // what the run ended with rather than just a full bar.
                     if (result.destroyed()) {
-                        progress.finish("100%  Finished");
+                        progress.finish();
+                        progressCaption.setText("100%  Finished");
                     } else {
                         progress.reset();
+                        progressCaption.setText("");
                     }
                     showResult(result);
                 } catch (java.util.concurrent.ExecutionException ee) {
                     Throwable cause = ee.getCause() == null ? ee : ee.getCause();
                     progress.reset();
+                    progressCaption.setText("");
                     showError(Friendly.describeFailure(cause));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     progress.reset();
+                    progressCaption.setText("");
                     showError("The job was interrupted.");
                 }
             }
@@ -487,7 +491,7 @@ public final class MainWindow extends JFrame {
     }
 
     /** Runs the offline evidence check on a background thread. */
-    private void startVerify() {
+    void startVerify() {
         setBusy(true);
         statusLabel.setText("Checking your history...");
 

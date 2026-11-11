@@ -172,7 +172,8 @@ public final class EvidenceVerifier {
             raw.append("newestEventId=").append(newest == null ? "n/a" : newest.eventId).append('\n');
 
             if (ok) {
-                String explanation = "We checked all " + log.size() + " records against the signed summary, "
+                String explanation = "We checked " + log.size() + (log.size() == 1 ? " record" : " records")
+                        + " against the signed summary, "
                         + "confirmed each one is signed, and confirmed they are all in order.";
                 if (!notes.isEmpty()) {
                     explanation = explanation + " " + String.join(" ", notes);
