@@ -61,14 +61,16 @@ jobs:
     # not been, the deploy is skipped rather than failed: the site still builds, and the
     # reason is stated once instead of on every push.
     if: always() && needs.build.result == 'success' && github.repository_owner == 'LangerSword'
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # The github-pages environment is not declared here. A job that names an
+    # environment which does not exist yet is skipped before it runs a single step,
+    # and the site was building on every push without ever being published. The
+    # environment is created by the Pages setup on the repository, not by the
+    # workflow that uses it.
     steps:
       - name: Configure Pages
         id: pages
         # The step is allowed to fail so that a repository without Pages still gets a
-        # green build. Its outcome is checked below, so the failure is contained.
+        # green build. Its conclusion is checked below, so the failure is contained.
         continue-on-error: true
         uses: actions/configure-pages@v5
 
