@@ -1281,6 +1281,38 @@ main, .foot { position: relative; z-index: 1; }
 .dl__get[data-ready="true"] { color: var(--green); }
 .dl__row a.dl__get:hover { color: var(--paper); }
 
+/* The artifacts that are not the main download. They answer different
+   questions, so they are listed by name rather than given a button of
+   their own competing with the main one. */
+.dl__others { margin-top: 1.75rem; }
+
+.dl__othersLabel {
+  margin: 0 0 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.dl__others ul { list-style: none; margin: 0; padding: 0; }
+
+.dl__others li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: baseline;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.dl__others li:last-child { border-bottom: 0; }
+.dl__others li a { color: var(--paper); }
+.dl__others li a:hover { color: var(--green); }
+.dl__othersNote { color: var(--faint); font-size: 0.68rem; }
+
 .dl__empty {
   margin-top: 1.5rem;
   border: 1px dashed var(--line-strong);
