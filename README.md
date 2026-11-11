@@ -81,7 +81,7 @@ You need **JDK 25** and a Linux machine. The memory verifier reads `/proc/<pid>/
 ./bin/jvd verify-memory --gc ZGC
 ```
 
-Prebuilt jars are on the [releases page](https://github.com/asingh1192/VERIFIABLE-SECURE-DATA-DESTRUCTION-IN-JAVA/releases). Check a download against `SHA256SUMS` before you run it.
+Prebuilt jars are on the [releases page](https://github.com/asingh1192/Vestige/releases). Check a download against `SHA256SUMS` before you run it.
 
 `./bin/jvd` sets `--enable-native-access=ALL-UNNAMED` for you. The FFM downcalls in the memory module need this flag.
 

@@ -99,7 +99,7 @@ export function Download() {
                 <br />
                 <code>git clone https://github.com/{REPO}.git</code>
                 <br />
-                <code>cd VERIFIABLE-SECURE-DATA-DESTRUCTION-IN-JAVA</code>
+                <code>cd Vestige</code>
                 <br />
                 <code>./mvnw -B package</code>
                 <br />

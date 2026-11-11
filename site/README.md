@@ -1,7 +1,7 @@
 # Vestige — project site
 
 The public site for **Vestige**, which is the product name for
-[asingh1192/VERIFIABLE-SECURE-DATA-DESTRUCTION-IN-JAVA](https://github.com/asingh1192/VERIFIABLE-SECURE-DATA-DESTRUCTION-IN-JAVA).
+[asingh1192/Vestige](https://github.com/asingh1192/Vestige).
 The Java project keeps its own name, package (`dev.jvd`) and version; only the public
 brand differs.
 
