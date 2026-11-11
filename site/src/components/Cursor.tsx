@@ -14,9 +14,13 @@ export function Cursor() {
   const label = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
-    const fine = window.matchMedia("(pointer: fine)").matches;
+    // A hover + fine pointer is the only case where replacing the native cursor
+    // is safe. Anything else (phone, tablet, touch laptop without a mouse) keeps
+    // the system cursor and never shows these layers.
+    const hovering = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const anyCoarse = window.matchMedia("(any-pointer: coarse)");
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!fine) return;
+    if (!hovering.matches) return;
 
     document.documentElement.classList.add("has-cursor");
 
@@ -46,6 +50,15 @@ export function Cursor() {
       }
     };
 
+    // a touch on a hybrid laptop means the finger is in charge: hand the cursor back
+    let disabled = false;
+    const onTouchDown = (e: PointerEvent) => {
+      if (e.pointerType === "touch" && !disabled) {
+        disabled = true;
+        document.documentElement.classList.remove("has-cursor");
+      }
+    };
+
     const down = () => {
       scaleTarget *= 0.82;
     };
@@ -64,6 +77,12 @@ export function Cursor() {
       raf = requestAnimationFrame(frame);
     };
 
+    if (disabled || (anyCoarse.matches && !hovering.matches)) {
+      document.documentElement.classList.remove("has-cursor");
+      return;
+    }
+
+    window.addEventListener("pointerdown", onTouchDown, { passive: true });
     window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerover", over, { passive: true });
     window.addEventListener("pointerdown", down, { passive: true });
@@ -72,6 +91,7 @@ export function Cursor() {
 
     return () => {
       cancelAnimationFrame(raf);
+      window.removeEventListener("pointerdown", onTouchDown);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerover", over);
       window.removeEventListener("pointerdown", down);

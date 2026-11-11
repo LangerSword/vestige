@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
-const LINKS = [
-  { href: "#how", label: "Destruction" },
-  { href: "#evidence", label: "Evidence" },
-  { href: "#limits", label: "Limits" },
-  { href: "#modules", label: "Modules" },
+import type { RefTab } from "./Reference";
+
+type Link = { id: string; label: string; tab?: RefTab };
+
+const LINKS: Link[] = [
+  { id: "how", label: "Destruction" },
+  { id: "decisions", label: "Decisions" },
+  { id: "meas", label: "Measurements" },
+  { id: "reference", label: "Evidence", tab: "evidence" },
+  { id: "reference", label: "Limits", tab: "limits" },
 ];
 
-export function Nav() {
+export function Nav({ onTab }: { onTab: (t: RefTab) => void }) {
   const [stuck, setStuck] = useState(false);
   const bar = useRef<HTMLDivElement | null>(null);
 
@@ -41,7 +46,18 @@ export function Nav() {
 
         <nav className="nav__links" aria-label="Sections">
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href}>
+            <a
+              key={l.label}
+              href={`#${l.id}`}
+              data-cursor={l.label.toLowerCase()}
+              onClick={(e) => {
+                e.preventDefault();
+                if (l.tab) onTab(l.tab);
+                requestAnimationFrame(() =>
+                  document.getElementById(l.id)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                );
+              }}
+            >
               {l.label}
             </a>
           ))}
