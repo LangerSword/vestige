@@ -19,6 +19,7 @@
     <module>verify</module>
     <module>verifier-cli</module>
     <module>cli</module>
+    <module>gui</module>
   </modules>
 
   <properties>
