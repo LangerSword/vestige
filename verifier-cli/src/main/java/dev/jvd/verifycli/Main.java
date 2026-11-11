@@ -15,7 +15,6 @@ import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.List;
 
 /**
  * {@code jvd-verify}: the offline evidence verifier. It trusts nothing the
@@ -177,7 +176,4 @@ public final class Main {
     static String keyToB64(PublicKey key) {
         return Base64.getEncoder().encodeToString(key.getEncoded());
     }
-
-    // kept for symmetry with tests/tools that list leaves as records
-    static List<String> unused() { return List.of(); }
 }

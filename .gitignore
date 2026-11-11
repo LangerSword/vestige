@@ -1,3 +1,18 @@
 target/
 *.class
+
+# Experiment and spike build output
+experiments/classes/
 spikes/work/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
