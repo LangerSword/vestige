@@ -1,0 +1,15 @@
+name = "vestige-web"
+main = "worker/index.ts"
+compatibility_date = "2026-01-15"
+workers_dev = true
+
+# Static build is served by the Worker's asset binding; /api/* always reaches
+# the Worker first so the release feed stays dynamic.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[observability]
+enabled = true
