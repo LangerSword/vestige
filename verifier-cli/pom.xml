@@ -7,4 +7,35 @@
     <dependency><groupId>dev.jvd</groupId><artifactId>log</artifactId></dependency>
     <dependency><groupId>dev.jvd</groupId><artifactId>evidence</artifactId></dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <!--
+        Same rationale as the cli module: one self-contained runnable jar so the
+        offline verifier can be handed to somebody who must check the evidence
+        without building the project (an auditor, a reviewer, a customer).
+        The verifier is deliberately dependency-free at runtime — it verifies
+        evidence without network access — and shading keeps that property: one
+        file, no dependency resolution, no network.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>dev.jvd.verifycli.Main</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
