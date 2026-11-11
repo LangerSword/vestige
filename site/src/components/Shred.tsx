@@ -93,7 +93,7 @@ export function Shred() {
   }, [thresholds]);
 
   return (
-    <div className="shred" id="how" ref={wrap} style={{ minHeight: "260svh" }}>
+    <div className="shred" id="how" ref={wrap} style={{ minHeight: "120svh" }}>
       <div className="shred__stage" style={{ position: "sticky", top: 0 }}>
         <div className="shell">
           <div className="shred__label">

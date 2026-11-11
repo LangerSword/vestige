@@ -1,16 +1,9 @@
-import { Suspense, lazy } from "react";
-
-// The 3D field is the heaviest dependency on the page, so it is its own chunk:
-// the copy and the terminal render first, and the scene arrives after.
-const Scene = lazy(() => import("../three/Scene").then((m) => ({ default: m.Scene })));
+import { Magnetic } from "./Magnetic";
 
 export function Hero() {
   return (
     <section className="hero" id="top">
       <div className="hero__bg" aria-hidden="true" />
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
       <div className="colgrid" aria-hidden="true" />
 
       <div className="hero__key" aria-hidden="true">
@@ -33,9 +26,14 @@ export function Hero() {
           <p className="eyebrow">Verifiable destruction · NIST SP 800-88 · JVM</p>
 
           <h1>
-            No vestige
-            <br />
-            <em>remains.</em>
+            <span className="line">
+              <span>No vestige</span>
+            </span>
+            <span className="line">
+              <span>
+                <em>remains.</em>
+              </span>
+            </span>
           </h1>
 
           <p className="hero__sub">
@@ -45,11 +43,13 @@ export function Hero() {
           </p>
 
           <div className="hero__cta">
-            <a className="btn btn--solid" href="#download">
-              Download
-              <span className="btn__key">0.1.0</span>
-            </a>
-            <a className="btn btn--ghost" href="#limits">
+            <Magnetic>
+              <a className="btn btn--solid" href="#download" data-cursor="download">
+                Download
+                <span className="btn__key">0.1.0</span>
+              </a>
+            </Magnetic>
+            <a className="btn btn--ghost" href="#limits" data-cursor="read">
               Read the limits first →
             </a>
           </div>

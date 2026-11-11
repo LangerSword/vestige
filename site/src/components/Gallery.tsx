@@ -1,3 +1,6 @@
+import { useEffect, useRef } from "react";
+import { gsap, prefersReduced } from "../lib/motion";
+
 const SHOTS: Array<{ src: string; alt: string; caption: string; meta: string }> = [
   {
     src: "./img/desktop-app-destroyed.png",
@@ -16,8 +19,35 @@ const SHOTS: Array<{ src: string; alt: string; caption: string; meta: string }> 
 ];
 
 export function Gallery() {
+  const host = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const root = host.current;
+    if (!root || prefersReduced()) return;
+    const ctx = gsap.context(() => {
+      gsap.utils.toArray<HTMLElement>(".shot__frame").forEach((frame) => {
+        gsap.fromTo(
+          frame,
+          { scale: 0.82, opacity: 0.35 },
+          {
+            scale: 1,
+            opacity: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: frame,
+              start: "top 92%",
+              end: "center 58%",
+              scrub: 0.5,
+            },
+          },
+        );
+      });
+    }, root);
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <section className="section section--tight" id="app">
+    <section className="section section--tight" id="app" ref={host}>
       <div className="shell">
         <div className="section-head reveal">
           <h2>One file. One button. Plain language.</h2>

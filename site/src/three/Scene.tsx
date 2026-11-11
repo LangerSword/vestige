@@ -75,6 +75,7 @@ export function Scene() {
         uProgress: { value: 0 },
         uPixel: { value: dpr },
         uGhost: { value: 0 },
+        uPulse: { value: new THREE.Vector3(0, 0, 0) },
       },
       vertexShader: /* glsl */ `
         attribute float aRand;
@@ -83,6 +84,7 @@ export function Scene() {
         uniform float uProgress;
         uniform float uPixel;
         uniform float uGhost;
+        uniform vec3 uPulse;
         varying float vAlpha;
         varying float vSeed;
 
@@ -99,12 +101,19 @@ export function Scene() {
           p += dir * t * 3.4;
           p.y += t * t * 1.7;
 
+          // click shockwave: the field is an object you can disturb
+          float pd = distance(p.xy, uPulse.xy);
+          float push = smoothstep(3.4, 0.0, pd) * uPulse.z;
+          vec2 away = normalize(p.xy - uPulse.xy + vec2(0.001, 0.001));
+          p.xy += away * push * 2.4;
+          p.z += push * 2.0;
+
           // two passes over the same geometry: free sectors are drawn as a faint
           // ghost grid so the slab reads as a storage map, not a starfield
           float blockMix = mix(0.22, 1.0, aBlock);
           if (uGhost > 0.5) blockMix = mix(1.0, 0.02, aBlock);
 
-          vAlpha = (1.0 - t) * (0.28 + aRand * 0.6) * blockMix;
+          vAlpha = (1.0 - t) * (0.28 + aRand * 0.6) * blockMix * (1.0 - push * 0.9);
           vSeed = aRand;
 
           vec4 mv = modelViewMatrix * vec4(p, 1.0);
@@ -168,10 +177,22 @@ export function Scene() {
       pointerTarget.y = (e.clientY / window.innerHeight - 0.5) * 2;
     };
 
+    // project the click onto the plane the field lives on, then let it decay
+    const onDown = (e: PointerEvent) => {
+      const rect = mount.getBoundingClientRect();
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((((e.clientY - rect.top) / rect.height) * 2 - 1));
+      const vFov = (camera.fov * Math.PI) / 180;
+      const planeHeight = 2 * Math.tan(vFov / 2) * camera.position.z;
+      const planeWidth = planeHeight * camera.aspect;
+      material.uniforms.uPulse.value.set((ndcX * planeWidth) / 2, (ndcY * planeHeight) / 2, 1);
+    };
+
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointermove", onPointer, { passive: true });
+    mount.addEventListener("pointerdown", onDown, { passive: true });
     onScroll();
 
     let raf = 0;
@@ -183,8 +204,13 @@ export function Scene() {
       pointer.x += (pointerTarget.x - pointer.x) * 0.045;
       pointer.y += (pointerTarget.y - pointer.y) * 0.045;
 
+      const pulse = material.uniforms.uPulse.value as THREE.Vector3;
+      pulse.z *= 0.94;
+      if (pulse.z < 0.01) pulse.z = 0;
+
       material.uniforms.uTime.value = t;
       material.uniforms.uProgress.value = progress;
+      ghostMaterial.uniforms.uPulse.value.copy(pulse);
       ghostMaterial.uniforms.uTime.value = t;
       ghostMaterial.uniforms.uProgress.value = progress;
       ghostMaterial.uniforms.uPixel.value = material.uniforms.uPixel.value;
@@ -209,6 +235,7 @@ export function Scene() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pointermove", onPointer);
+      mount.removeEventListener("pointerdown", onDown);
       geometry.dispose();
       material.dispose();
       ghostMaterial.dispose();
@@ -217,5 +244,5 @@ export function Scene() {
     };
   }, []);
 
-  return <div ref={host} className="scene" aria-hidden="true" />;
+  return <div ref={host} className="scene" data-cursor="erase" aria-hidden="true" />;
 }
