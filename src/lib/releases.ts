@@ -47,7 +47,7 @@ export type ReleaseState = {
   detail?: string;
 };
 
-export const REPO = "asingh1192/VERIFIABLE-SECURE-DATA-DESTRUCTION-IN-JAVA";
+export const REPO = "asingh1192/Vestige";
 
 const FORMATS: Array<[RegExp, Platform, string]> = [
   [/\.appimage$/i, "linux", "AppImage"],

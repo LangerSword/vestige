@@ -20,8 +20,7 @@ export function Evidence() {
           <p>
             NIST SP 800-88 Rev.2 keeps them apart, and so does this schema. One half records
             what the machine observed. The other records a named person accepting or rejecting
-            it. A record that says{" "}
-            <code style={{ fontFamily: "var(--mono)" }}>PENDING</code> is a valid record.
+            it.
           </p>
         </div>
 
@@ -62,12 +61,12 @@ export function Evidence() {
           </div>
 
           <div className="evidence__copy">
-            <h3>This record is a success that admits a gap.</h3>
+            <h3>The record is a success that admits a gap.</h3>
             <p>
-              The destruction completed. The canary check was not run by this command, so{" "}
+              This run completed. The canary check did not run, so{" "}
               <code style={{ fontFamily: "var(--mono)" }}>controlsValid</code> is false and the
-              assurance is capped at A0 — on purpose. Rounding that up to “verified” would be
-              the exact failure the project exists to prevent.
+              level is A0. Rounding that up to “verified” is the failure the project exists to
+              prevent.
             </p>
 
             <dl className="split">

@@ -1,7 +1,7 @@
 const LIMITS: Array<[string, string]> = [
   [
     "Physical flash is not verified.",
-    "SSD remapping, bad-block pools, and controller-held copies are not observable from user-space Java. Every assurance level says so, in the record, not in a footnote.",
+    "SSD remapping, bad-block pools and controller-held copies are not visible to user-space Java. The record says so at every level.",
   ],
   [
     "Copies that existed before the destruction.",
@@ -13,11 +13,11 @@ const LIMITS: Array<[string, string]> = [
   ],
   [
     "A witness that colludes with the operator.",
-    "The log refuses a witness key that equals the log key, but two keys held by the same dishonest party can still rewrite history if every old checkpoint is withheld.",
+    "The log refuses a witness key equal to the log key. Two keys held by one dishonest party can still rewrite history if every old checkpoint is withheld.",
   ],
   [
     "An operator who never runs the verifier.",
-    "The proof is only worth what checking it is worth. Offline verification exists so that checking does not require trusting the person who ran the destruction.",
+    "A proof is worth what checking it is worth. The offline verifier exists so checking does not require trust in the operator.",
   ],
   [
     "Memory verification is Linux-only.",
@@ -32,8 +32,7 @@ export function Limits() {
         <div className="section-head reveal">
           <h2>What this does not defend against.</h2>
           <p>
-            These are the project’s own limits, not a disclaimer added for the web page. Each
-            one is listed with the same wording the evidence record uses.
+            These are the project’s own limits, in the wording the evidence record uses.
           </p>
         </div>
 

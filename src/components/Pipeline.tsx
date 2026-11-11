@@ -14,28 +14,28 @@ const STAGES: Stage[] = [
     name: "VAULT",
     state: "STAGED → VAULTED",
     title: "Encrypt a copy nobody can open yet.",
-    body: "A fresh per-file key seals an encrypted copy. The original has not been touched, and the write-ahead journal has already recorded what is about to happen.",
-    note: "crash here → ABORTED, the copy is deleted, your file is intact",
+    body: "A fresh per-file key seals an encrypted copy. The original is untouched. The journal records the step before it runs.",
+    note: "crash here → ABORTED, copy deleted, original intact",
   },
   {
     name: "SCRUB",
     state: "VAULTED → SCRUBBED",
     title: "Overwrite the original, then delete it.",
-    body: "One pass of zeros with an fsync, then unlink. Not seven passes: the measurements in this project show one pass and seven passes give the same result. One verified pass beats seven unverified ones.",
+    body: "One pass of zeros, an fsync, then unlink. The measurements show one pass and seven passes give the same read-back.",
     note: "crash here → restore from the vault",
   },
   {
     name: "VALIDATE",
     state: "SCRUBBED → VALIDATED_PRECOMMIT",
     title: "Check it worked, with controls that can fail.",
-    body: "Path absence, a post-scrub read-back, and — for memory subjects — three child JVMs: the target, one that must be found, one that must not. If the positive control is missing, the run is INVALID, and INVALID caps assurance at A0.",
+    body: "Path absence and a read-back. Memory runs also start three child JVMs: the target, a positive control, a negative control. A missing control makes the run INVALID, and INVALID caps assurance at A0.",
     note: "a failed control is a result, not a pass",
   },
   {
     name: "COMMIT",
     state: "VALIDATED_PRECOMMIT → COMMITTED",
     title: "Destroy the key. That is the irreversible part.",
-    body: "The key that opens the copy is destroyed, a decrypt attempt must fail, and the signed record plus checkpoint go into the log. Recovery will never restore this — that irreversibility is the whole guarantee.",
+    body: "The tool destroys the key. A decrypt attempt must fail. The signed record and checkpoint go into the log. Recovery never restores this.",
     note: "rollback writes ABORTED before it restores, so a rollback cannot hide a failed destruction",
   },
 ];
@@ -78,9 +78,8 @@ export function Pipeline() {
         <div className="section-head reveal">
           <h2>Destruction is a transaction, not a delete.</h2>
           <p>
-            Every state change goes to a write-ahead journal, and the journal decides what a
-            crash recovery does. Scroll to walk it — the interesting part is that a crash at
-            any point has a defined answer, including “we restored it”.
+            Every state change goes to a write-ahead journal. The journal decides what a crash
+            recovery does.
           </p>
         </div>
       </div>

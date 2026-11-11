@@ -51,8 +51,8 @@ export function Download() {
         <div className="section-head reveal">
           <h2>Take the one that fits your machine.</h2>
           <p>
-            The button resolves an artifact for the platform it detects. Windows and macOS
-            have no builds yet, and the page does not invent one.
+            The button resolves an artifact for the platform it detects. Windows and macOS have
+            no builds yet.
           </p>
         </div>
 
@@ -99,7 +99,7 @@ export function Download() {
                 <br />
                 <code>git clone https://github.com/{REPO}.git</code>
                 <br />
-                <code>cd VERIFIABLE-SECURE-DATA-DESTRUCTION-IN-JAVA</code>
+                <code>cd Vestige</code>
                 <br />
                 <code>./mvnw -B package</code>
                 <br />
@@ -152,15 +152,6 @@ export function Download() {
               </div>
             ) : null}
 
-            <p className="dl__hint" style={{ marginTop: "1.25rem" }}>
-              {state.status === "loading"
-                ? "checking the release feed…"
-                : state.source === "api"
-                  ? "feed: same-origin worker"
-                  : state.source === "github"
-                    ? "feed: github api · direct"
-                    : "feed: unavailable — showing the source path"}
-            </p>
 
             {latest ? (
               <p className="dl__hint">

@@ -14,7 +14,7 @@ interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
-const REPO = "LangerSword/jverifydestroy";
+const REPO = "asingh1192/Vestige";
 const TTL_SECONDS = 300;
 const CACHE_KEY = "https://vestige.internal/releases/v1";
 
