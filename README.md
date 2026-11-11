@@ -1,65 +1,227 @@
 # jverifydestroy (jvd)
 
-A Java 25 library + CLI where data destruction is followed by **measured verification**, the evidence is **tamper-evident and offline-checkable**, and a failed destruction **rolls back safely**.
+**jvd destroys a file, proves the destruction, and lets anyone check the proof later.**
 
-> **Honest limit — read first.** User-space Java **cannot verify physical flash**. SSD flash-translation-layer remapping, bad-block pools and controller-held copies are unobservable from this code. Every result in this project is **logical-level only**: process memory, heap dumps, file bytes and filesystem images visible through OS/JVM interfaces. Every assurance level below carries *"physical media NOT verified"* unless the user attaches external evidence (e.g. a drive sanitize log).
+It deletes a file with a crypto-shred. The data becomes unreadable because the key is
+destroyed. Then jvd writes a signed record of what it did. Then it gives you an offline
+verifier that checks the record and reports if anyone changed it.
 
-## Why
-Most erasure tools answer *what* was destroyed and *how*, weakly *whether it worked*, and partly *whether the evidence is honest*. Their verification is the tool grading its own homework. jvd's thesis (corrected per NIST SP 800-88 Rev.2 — see `docs/RESEARCH_AUDIT.md`): **automate verification strong enough that the validation decision is not a rubber stamp.** In Rev.2 terms, *verification* inspects the outcome of the sanitization operation; *validation* is the separate, risk-based **decision** that reviews verification results and accepts, rejects or escalates. This tool produces measured verification — including a measured **false-assurance rate** — and records the validation decision separately, by name, in the evidence.
+> **Read this limit before you trust the result.** User-space Java cannot verify physical
+> flash. SSD flash-translation-layer remapping, bad-block pools, and controller-held
+> copies are not observable from this code. Every result here is **logical level only**:
+> process memory, file bytes, and file system images that the OS and the JVM expose.
 
-## Architecture
-```mermaid
-flowchart LR
-    CLI[jvd CLI] --> TXN[txn: commit/rollback<br/>WAL journal]
-    TXN --> DM[destroy-memory<br/>SecretBuffer / HeapWipe]
-    TXN --> DF[destroy-file<br/>overwrite / crypto-shred]
-    TXN --> VER[verify: CanaryVerifier<br/>parent scans child JVM]
-    VER --> EV[evidence: Ed25519-signed JSON<br/>verification ≠ validation]
-    EV --> LOG[log: RFC 6962 Merkle log<br/>witness-cosigned checkpoints]
-    LOG --> VC[jvd-verify: offline verifier<br/>edit / delete / backdate / fork]
+## Why this exists
+
+Most erasure tools answer *what* was destroyed and *how*. They answer *whether it worked*
+weakly. They answer *whether the evidence is honest* hardly at all. The tool grades its own
+homework.
+
+jvd automates verification so that the validation decision does not become a rubber stamp.
+It follows NIST SP 800-88 Rev.2. **Verification** inspects the outcome of the sanitization
+operation. **Validation** is the separate, risk-based **decision** that reviews the
+verification results and accepts, rejects, or escalates. jvd records these as two separate
+fields. It never merges them.
+
+## How it works
+
 ```
+   pick a file
+        │
+        ▼
+   ┌─────────────┐   encrypt a copy with a fresh per-file key
+   │  1. VAULT   │──────────────────────────────┐
+   └──────┬──────┘                              │
+          │                                     ▼
+   ┌──────┴──────┐   overwrite the original    ┌────────────┐
+   │  2. SCRUB   │   with zeros, then delete  │ ciphertext  │
+   └──────┬──────┘                             │ (kept)     │
+          │                                     └─────┬──────┘
+   ┌──────┴───────┐   checks that it works              │
+   │ 3. VALIDATE  │───────────────┐                     │
+   └──────┬───────┘               │                     │
+          │                       ▼                     ▼
+   ┌──────┴───────┐        ┌────────────┐        ┌────────────┐
+   │ 4.  COMMIT   │        │  ABORTED   │        │ destroy the│
+   │ destroy key  │        │ restore the│        │  key       │
+   └──────┬───────┘        │  original  │        └────────────┘
+          │                └────────────┘
+          ▼
+   signed record + Merkle log + witness co-signature
+          │
+          ▼
+   jvd-verify  →  OK  |  TAMPER DETECTED
+```
+
+The transaction state machine is the core of the tool. Every state change goes to a
+write-ahead journal. The journal decides what a crash recovery does.
+
+```mermaid
+stateDiagram-v2
+    [*] --> STAGED: record the source
+    STAGED --> VAULTED: encrypt a copy
+    VAULTED --> SCRUBBED: overwrite and delete the original
+    SCRUBBED --> VALIDATED_PRECOMMIT: run the checks
+    VALIDATED_PRECOMMIT --> COMMITTED: destroy the key
+    STAGED --> ABORTED: failure or crash
+    VAULTED --> ABORTED: failure or crash
+    SCRUBBED --> ABORTED: failure or crash
+    VALIDATED_PRECOMMIT --> ABORTED: failure or crash
+    ABORTED --> [*]: restore the original
+    COMMITTED --> [*]: nothing can be restored
+```
+
+**Four decisions carry the tool.**
+
+1. **The canary has a positive control and a negative control on every run.** The verifier
+   runs three child JVMs: one target, one that must be found, and one that must not be
+   found. A run with a failed control is `INVALID`. `INVALID` caps the assurance level at
+   `A0`. "Found nothing" without a control proves nothing. This is the difference between
+   the tool grading its own homework and the tool proving its homework.
+2. **The evidence log uses RFC 6962 hashing, not RFC 9162.** C2SP checkpoints hash over the
+   RFC 6962 tree. RFC 9162 is the Certificate Transparency v2 framing, and it is
+   Experimental. The log also refuses a witness co-signature when the witness key is the
+   log key, because such a witness attests to nothing.
+3. **A rollback writes the ABORTED event before it restores the file.** If the restore ran
+   first, a rollback could hide a failed destruction.
+4. **The tool writes one overwrite pass, not seven.** NIST SP 800-88 Rev.2 and IEEE 2883
+   treat extra passes as folklore on modern media. The measured data agrees: one pass and
+   seven passes give the same result. One verified pass beats seven unverified ones.
+
+## See it work
+
+```
+$ ./bin/jvd destroy-file secret.txt --kek-hex <hex> --work work --log log
+state=COMMITTED
+artifact=/home/you/work/artifact.enc
+postCommitDecryptFailed=true
+assurance=A0 (A0 here: no canary controls run by this command - see README)
+record=/home/you/work/evidence-record.json
+logSize=1
+```
+
+```
+$ ./bin/jvd-verify --log log --checkpoint log/checkpoint.txt --pubkey <b64>
+OK: log verified (size=1, root matches checkpoint, signatures valid, inclusion proofs valid, timestamps monotonic)
+```
+
+Change one byte of a stored record, and the verifier says so:
+
+```
+$ ./bin/jvd-verify --log log --checkpoint log/checkpoint.txt --pubkey <b64>
+TAMPER DETECTED: checkpoint root does not match recomputed log root (record edited)
+```
+
+## Run it
+
+You need **JDK 25** and a Linux machine. The memory verifier reads `/proc/<pid>/mem`, so
+it does not work on macOS or Windows. The tool reports `NOT_CHECKABLE` there. It never
+guesses.
+
+```bash
+# Build the runnable jars (about 40 seconds)
+./mvnw -B package
+
+# Destroy a file and write the signed record
+./bin/jvd destroy-file secret.txt --kek-hex <64-hex-chars> --work work --log log
+
+# Check the record later, with no network and no trust in the operator
+./bin/jvd-verify --log log --checkpoint log/checkpoint.txt --pubkey <b64>
+
+# Verify that a secret is really gone from process memory
+./bin/jvd verify-memory --gc ZGC
+```
+
+The `bin/jvd` script sets `--enable-native-access=ALL-UNNAMED` for you. The FFM downcalls
+in the memory module need this flag. Without it the tool still works, but it reports
+degraded hardening.
+
+## What the measurements say
+
+Full data and the method are in `docs/RESULTS.md`. The CSVs are in `experiments/results/`.
+
+**Memory.** After one promotion GC, wiping the live array leaves a findable stale copy in
+199 of 200 trials under G1, and in 197 of 200 trials under ZGC. Seven overwrite passes
+change nothing. Shenandoah leaves only 2 of 200.
+
+**Files.** Deleting a file leaves all 200 of 200 canary files readable in the raw ext4
+image. A single overwrite reads back clean at the logical level in 200 of 200 trials.
+
+**Tamper detection.** The offline verifier detects an edited record, a deleted record, a
+backdated record, and a forked log in 50 of 50 trials for each type.
+
+| Result | Count |
+|---|---|
+| Heap wipe, G1, stale copy found | 199 / 200 |
+| Heap wipe, ZGC, stale copy found | 197 / 200 |
+| Heap wipe, Shenandoah, stale copy found | 2 / 200 |
+| File overwrite, clean read-back | 200 / 200 |
+| File delete only, contents still in image | 200 / 200 |
+| Tamper detection, per tamper type | 50 / 50 |
 
 ## Modules
-| Module | What it does | Claim → evidence |
+
+| Module | What it does | Tests |
 |---|---|---|
-| `destroy-memory` | `SecretBuffer`: off-heap (FFM), page-aligned, `fill(0)` before Arena close, best-effort `mlock` + `MADV_DONTDUMP` with a *reported* hardening status. `HeapWipe`: `Arrays.fill` for `byte[]`/`char[]`, **labelled best-effort**. | Tests: `SecretBufferTest` (4). Spikes: H2, H5 |
-| `destroy-file` | Single-pass overwrite + fsync + delete (**Clear; weak on flash and COW filesystems**). Crypto-shred: per-file AES-256-GCM DEK wrapped by a KEK; shredding = destroying the wrapped DEK. | Tests: `FileDestroyTest` (4). Experiments: file trials |
-| `txn` | Destruction transaction `STAGED → VAULTED → SCRUBBED → VALIDATED_PRECOMMIT → COMMITTED`, write-ahead journal (fsynced), crash recovery. Rollback only **before** COMMIT; the ABORTED event is appended/witnessed **before** any restore. **Restore after COMMIT is never promised and is refused.** | Tests: `TransactionTest` (5), incl. real `kill -9` (halt) at every state |
-| `verify` | Canary validation: a parent process scans a child victim JVM's `/proc/<pid>/mem` (primary) — never itself (spike H4). Canary **family** (raw / UTF-16LE / UTF-16BE / hex variants). **Positive and negative controls on every run; a run with a failed control is INVALID.** Results: `FOUND / NOT_FOUND / NOT_CHECKABLE(reason)`. | Tests: `CanaryVerifierTest` (3), incl. sabotaged-control → INVALID. Spikes H1–H4 |
-| `evidence` | `EvidenceRecord` JSON, Ed25519-signed. `verification` (machine results) and `validation` (decision, decider, rationale) are **separate fields**, mapped to NIST SP 800-88 Rev.2; Rev.2 Appendix C media fields are mapped to logical analogues and the mapping is stated in the record. | Tests: `EvidenceTest` (4) |
-| `log` | Append-only Merkle log, **RFC 6962** hashing, C2SP-style signed checkpoints, **independent witness co-signature** (refuses if witness key = log key), inclusion + consistency proofs. | Tests: `MerkleLogTest` (6); consistency verified for all (m,n), n≤32 |
-| `verifier-cli` | `jvd-verify`: fully offline. Detects edited records, deleted records, backdated/reordered timestamps, and forked logs (divergent checkpoints). | Tests: `VerifierCliTest` (6). Experiments: tamper trials |
-| `cli` | `jvd`: `destroy-file`, `verify-memory`, `version`. Note: `destroy-file` runs no canary controls, so it honestly reports **A0** (see levels). | Tests: `CliSmokeTest` (2) |
+| `destroy-memory` | `SecretBuffer`: off-heap storage via FFM, page-aligned, fills with zeros before close, attempts `mlock` and `MADV_DONTDUMP` and reports the result | 4 |
+| `destroy-file` | Single-pass overwrite with fsync and delete, and per-file crypto-shred with AES-256-GCM | 4 |
+| `txn` | The transaction state machine and the write-ahead journal, with crash recovery | 5 |
+| `verify` | The canary verifier: parent process, child processes, positive and negative controls | 4 |
+| `evidence` | The signed evidence record, and the `verification` and `validation` split | 4 |
+| `log` | The RFC 6962 Merkle log, signed checkpoints, witness co-signature, proofs | 6 |
+| `cli` | The `jvd` command line tool | 2 |
+| `verifier-cli` | The `jvd-verify` offline verifier | 6 |
+
+The build runs 35 tests. `./mvnw -B verify` runs them.
 
 ## Assurance levels
-- **A0** — deletion only; **or any run whose controls failed (INVALID)**; or a transaction still pre-COMMIT.
-- **A1** — best-effort overwrite/heap wipe + canary `NOT_FOUND` in all checkable locations **with valid controls**.
-- **A2** — crypto-shred COMMITTED + post-commit decrypt attempt fails + controls valid.
-- **A3** — A2 + evidence in a witness-cosigned log + independent re-validation by a separate process.
-- All levels: *physical media NOT verified* (see the honest limit above).
 
-## Threat model
-**Defends against:** a dishonest tool operator (signed, append-only, witness-cosigned evidence), backdated or deleted evidence (monotonic timestamps, Merkle proofs, witness-bound checkpoint times — limits in `docs/ASSUMPTIONS.md` #9), un-wiped secrets reported as destroyed (independent canary verification with controls), crashes mid-destruction (journal + rollback, never a false "destroyed").
-**Does NOT defend against:** physical SSD remapping, pre-existing copies (backups, earlier swap), a compromised JVM/OS, a witness colluding with the operator, or an operator who never runs the verifier.
+- **A0** — deletion only, or any run whose controls failed, or a transaction that is still
+  before COMMIT.
+- **A1** — overwrite or heap wipe, plus a canary that is `NOT_FOUND` in all checkable
+  locations, plus valid controls.
+- **A2** — a crypto-shred that reached COMMIT, plus a post-commit decrypt attempt that
+  fails, plus valid controls.
+- **A3** — A2, plus evidence in a witness co-signed log, plus independent re-validation by
+  a separate process.
 
-## What the measurements say (summary; full data in `docs/RESULTS.md`)
-- Merely **dropping a reference** left dropped arrays intact in memory — in the Phase 2 spike, an un-wiped control left **300,001 copies** of a 48-byte canary findable. Unreachable ≠ erased.
-- After a promotion GC, wiping the live `byte[]` still left **stale copies** measurable under G1 and ZGC (spike H2); the N=200 experiment matrix in `docs/RESULTS.md` gives per-collector false-assurance rates with Wilson 95% CIs.
-- Unlinking a file on an ext4 image left **200/200** canary files' contents in the raw image; single-pass overwrite read back clean at the *logical* level in 200/200 (COW/physical copies NOT_CHECKABLE — H6).
-- Heap dumps are a trap if used naively: a default `jcmd GC.heap_dump` GCs away unreachable evidence before dumping; `-all=true` preserves it, and a default dump taken first destroys it for later checks (spike H3).
+Every level carries "physical media NOT verified".
 
-## Build & run
-Requires JDK 25 (FFM final; developed on Temurin 25.0.5) and Maven 3.9+.
+## What this does not defend against
+
+Physical SSD remapping, copies that existed before the destruction (backups, earlier
+swap), a compromised JVM, an OS, or a kernel, a witness that colludes with the operator,
+and an operator who never runs the verifier. The tool cannot verify physical flash.
+
+## Prior work and novelty
+
+Crypto-shredding, hash-chained logs, overwriting, and Merkle transparency logs are all
+prior art. This project does not claim them. The audit in `docs/RESEARCH_AUDIT.md` checks
+26 claims against primary sources: 13 CONFIRMED, 9 PARTLY, 4 UNVERIFIABLE, 0 REFUTED.
+
+What this project defends as its own: control-validated verification of Java destruction
+with a measured false-assurance rate; the empirical matrix of secret patterns, collectors,
+and JIT levels on JDK 25; the coupling of rollback to failed validation with the ABORTED
+event witnessed before the restore; and a witness co-signed log for destruction evidence
+with an offline verifier. See `docs/RELATED_WORK.md`.
+
+## Build and test from source
+
 ```bash
-mvn -q verify            # 34 tests, all green at time of writing
-scripts/run_experiments.sh   # regenerates experiments/results/*.csv and docs/RESULTS.md
+./mvnw -B verify          # compile and run all 35 tests
+./mvnw -B package         # build the runnable jars
+scripts/run_experiments.sh   # regenerate the experiment data (about 15 minutes)
 ```
-This sandbox's Java processes have no direct network; `scripts/prefetch_maven_deps.py` (see `docs/ASSUMPTIONS.md` #15) pre-fetches the JUnit closure via curl so Maven resolves locally. On a normal machine, plain `mvn` fetches directly. The library and CLIs themselves make **no network calls**.
 
-## Docs
-- `docs/RESEARCH_AUDIT.md` — Phase 1: every claim in the originating report, audited (13 CONFIRMED / 9 PARTLY / 4 UNVERIFIABLE / 0 wholly REFUTED, 2 sub-claims refuted).
-- `docs/SPIKES.md` — Phase 2: H1–H6 settled by running code on JDK 25.
-- `docs/PLAN.md` — Phase 3: scope, threat model, and 10 explicit deviations from the report (D1–D10).
-- `docs/ASSUMPTIONS.md` — every autonomous decision, logged.
-- `docs/RELATED_WORK.md` — honest prior art; novelty is the combination + measured results.
-- `docs/RESULTS.md` — experiment results, generated only from real runs.
+The scripts in `experiments/` and `spikes/` need `python3`. They write their output to
+`experiments/results/`. The library and the command line tools make no network calls.
+
+## Licence and credits
+
+MIT. See `LICENSE`.
+
+The research in `docs/RESEARCH_AUDIT.md` cites primary sources for every claim. The NIST
+SP 800-88 Rev.2 and IEEE 2883 documents set the scope. Prior art and its licensing are
+listed in `docs/RELATED_WORK.md`.
+
+If this project helped you, a star helps the next person find it.
