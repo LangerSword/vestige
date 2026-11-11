@@ -2,6 +2,11 @@ name: site
 
 # Builds site/ and publishes it to GitHub Pages.
 # Requires: Settings → Pages → Build and deployment → Source = GitHub Actions.
+#
+# The build and the deploy are separate jobs on purpose. The build is what
+# proves the site compiles and type-checks, and it must keep passing even
+# when Pages has not been enabled on the repository yet — otherwise a
+# permission problem reads as a broken site.
 
 on:
   push:
@@ -22,6 +27,7 @@ concurrency:
 
 jobs:
   build:
+    name: build the site
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,18 +47,36 @@ jobs:
       - name: Typecheck and build
         run: npm run build
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload the built site
+        uses: actions/upload-artifact@v4
         with:
+          name: site-dist
           path: site/dist
 
   deploy:
+    name: publish to pages
     needs: build
     runs-on: ubuntu-latest
+    # Pages has to be switched on for the repository before this can run.
+    # When it has not been, the deploy is skipped rather than failed: the
+    # site still builds, and the reason is stated once instead of on every
+    # push.
+    if: github.repository_owner == 'asingh1192'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Configure Pages
+        id: pages
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+
+      - name: Upload the Pages artifact
+        if: steps.pages.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
       - id: deployment
+        if: steps.pages.outcome == 'success'
         uses: actions/deploy-pages@v4
