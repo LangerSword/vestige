@@ -47,13 +47,11 @@ The memory verification scans a child JVM. It needs `ptrace_scope <= 1` for chil
 which is the default on most distros — check with
 `cat /proc/sys/kernel/yama/ptrace_scope`.
 
-## Reproduce the experiments (optional, ~15 min)
-```bash
-scripts/run_experiments.sh   # regenerates experiments/results/*.csv and docs/RESULTS.md
-```
-Your numbers will differ slightly from docs/RESULTS.md — that is expected (different machine/GC
-timing); the CSV format and analysis are identical. Filesystem results are reported for the
-filesystem you run on; the shipped RESULTS.md used btrfs + an ext4 image, and says so.
+## The experiment data
+The trial CSVs are in `experiments/results/`, and `docs/RESULTS.md` analyses them. The Python
+harness that produced the CSVs was removed from this repository; the data was kept. Your numbers
+will differ from a rerun on another machine, and the CSV format is the same. `./mvnw -B verify`
+is the check that runs today.
 
 ## Troubleshooting
 - `UnsupportedClassVersionError` / FFM errors → `java -version` is not 25 (check JAVA_HOME).

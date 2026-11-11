@@ -69,10 +69,9 @@ java -cp "$CP" dev.jvd.cli.Main version
   (with the WSL extension) while files stay in Linux — best of both.
 - **ptrace check:** if `verify` tests report NOT_CHECKABLE on every GC, run
   `cat /proc/sys/kernel/yama/ptrace_scope` — 0 or 1 is fine for a parent scanning its children.
-- **Experiments:** `scripts/run_experiments.sh` works in WSL2; your home filesystem there is
-  ext4-backed, so file results will be ext4-flavoured (the shipped RESULTS.md used btrfs + an
-  ext4 image, and says so). Loop mounts are generally unavailable in WSL2 too — same
-  NOT_CHECKABLE items as in the build environment, by design.
+- **Experiments:** the trial CSVs in `experiments/results/` came from a Linux run on btrfs plus
+  an ext4 image; `docs/RESULTS.md` says so. The harness that produced them is no longer in the
+  repository. Loop mounts are generally unavailable in WSL2.
 - **Shutting down:** `wsl --shutdown` in PowerShell stops the Linux side when you're done.
 
 ---

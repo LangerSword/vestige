@@ -7,7 +7,7 @@
 - OS: Linux 7.0.0-44-generic x86_64, container running as root, `kernel.yama.ptrace_scope=1` (parent may trace children).
 - Filesystems: workspace on **btrfs** (copy-on-write), `/tmp` on tmpfs. Loop mounts **not permitted** in this container; raw block device not readable.
 - Victim heap `-Xmx256m` unless noted. Canary: 48 random bytes per run (`SecureRandom`/`secrets`), searched as a *family*: raw bytes, ASCII-hex encoding, UTF-16LE-of-hex.
-- Scanner: separate parent process reading `/proc/<pid>/maps` + `/proc/<pid>/mem` of a child victim JVM (spikes/scan.py, spikes/run_spikes.py). Counts below are occurrence counts in the child's readable regions.
+- Scanner: separate parent process reading `/proc/<pid>/maps` + `/proc/<pid>/mem` of a child victim JVM (a separate scanner process). Counts below are occurrence counts in the child's readable regions.
 - Known confound, measured and disclosed: the victim receives the canary as a hex argv string and parses it into a `byte[]` held in `main`'s frame — that one raw copy is *known-live and never wiped* in the hotloop/gcstale victims, so "raw = 1 after wipe" means "only the known copy remains". The H3 victim (unreachable2) was redesigned to generate its canary internally so it has **no** such confound.
 
 ## H1 — Does C2 dead-store elimination remove `Arrays.fill` wipes? **NOT OBSERVED (hypothesis not supported on this JDK/pattern)**

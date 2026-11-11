@@ -20,7 +20,7 @@ A Java 25 library + CLI where destruction is followed by **measured verification
 | `log` | Append-only Merkle log, **RFC 6962** hashing, C2SP-style signed checkpoints, independent witness co-signature (key-independence enforced), inclusion + consistency proofs | Phase 1 C-7 corrections |
 | `verifier-cli` | `jvd-verify`: offline; detects edited records, deleted records (proof failure), non-monotonic/backdated timestamps, forked logs (two divergent checkpoints for same tree size / inconsistent consistency proof) | Assumption 9 (honest limits of backdating detection) |
 | `cli` | `jvd`: destroy (memory/file/crypto), verify, log, evidence commands wiring the above | — |
-| `experiments` | Runner + victim child; `scripts/run_experiments.sh`; CSV + markdown output | §6 below |
+| `experiments` | Runner + victim child; CSV + markdown output (the Python harness was removed later; the CSVs remain) | §6 below |
 
 ## 4. Transaction (from report §6.1, with Assumption 6 ordering)
 `STAGED → VAULTED → SCRUBBED → PRE-COMMIT VALIDATION → COMMITTED → POST-COMMIT VALIDATION`
