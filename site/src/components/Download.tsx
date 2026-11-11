@@ -8,6 +8,8 @@ import {
   type Detected,
   type Platform,
   type ReleaseState,
+  others,
+  describe,
 } from "../lib/releases";
 
 const ROWS: Array<{ platform: Platform; os: string; hint: string }> = [
@@ -38,6 +40,10 @@ export function Download() {
 
   const latest = state.releases.find((r) => !r.prerelease) ?? state.releases[0];
   const asset = target ? pick(latest, target) : undefined;
+  // The command line tool is the main download; the verifier and the desktop
+  // app answer different questions, so they are listed by name instead of
+  // competing for the same button.
+  const extra = others(latest, asset);
 
   return (
     <section className="section" id="download">
@@ -130,6 +136,22 @@ export function Download() {
                 </div>
               );
             })}
+
+            {extra.length > 0 ? (
+              <div className="dl__others">
+                <p className="dl__othersLabel">Also in this release</p>
+                <ul>
+                  {extra.map((a) => (
+                    <li key={a.name}>
+                      <a href={a.url} rel="noreferrer">
+                        {a.name}
+                      </a>
+                      <span className="dl__othersNote">{describe(a)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             <p className="dl__hint" style={{ marginTop: "1.25rem" }}>
               {state.status === "loading"
