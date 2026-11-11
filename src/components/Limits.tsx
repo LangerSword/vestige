@@ -32,9 +32,8 @@ export function Limits() {
         <div className="section-head reveal">
           <h2>What this does not defend against.</h2>
           <p>
-            Taken from the project’s own limits section. A destruction tool is only as good as
-            the honesty of its worst sentence, so these sit on the front page rather than in a
-            document nobody opens.
+            These are the project’s own limits, not a disclaimer added for the web page. Each
+            one is listed with the same wording the evidence record uses.
           </p>
         </div>
 

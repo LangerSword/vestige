@@ -15,6 +15,7 @@ import { Tamper } from "./components/Tamper";
 import { Gallery } from "./components/Gallery";
 import { Reference, type RefTab } from "./components/Reference";
 import { Download } from "./components/Download";
+import { Notice } from "./components/Notice";
 import { Footer } from "./components/Footer";
 import { setupReveals } from "./lib/motion";
 
@@ -62,6 +63,7 @@ export function App() {
         <Gallery />
         <Reference tab={tab} onTab={setTab} />
         <Download />
+        <Notice />
       </main>
       <Footer />
     </div>

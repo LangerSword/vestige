@@ -80,9 +80,17 @@ const KINDS: Array<[RegExp, Kind]> = [
   [/^jvd-desktop/i, "desktop"],
   [/^jvd-verify/i, "verifier"],
   [/^jvd-web/i, "desktop"],
-  [/^jvd(?!-)/i, "cli"],
-  [/checksums?\$/i, "checksums"],
-  [/\.tar\.gz\$/i, "bundle"],
+  // The checksum file is listed before the jars, because "SHA256SUMS" would
+  // otherwise fall through to the catch-all.
+  [/checksums?$/i, "checksums"],
+  // The bundle is matched before the command line tool, because it is also
+  // called "jvd-<version>".
+  [/\.tar\.gz$/i, "bundle"],
+  // The command line tool is "jvd-<version>.jar". It has a dash after "jvd",
+  // unlike the other two, so it is matched by what follows the dash rather
+  // than by the name alone.
+  [/^jvd-(?!desktop|verify|web)\d/i, "cli"],
+  [/^jvd\b/i, "cli"],
 ];
 
 function kindOf(name: string): Kind {

@@ -128,7 +128,7 @@ export function Shred() {
           </div>
 
           <div className="shred__verdict" ref={verdict} style={{ opacity: 0 }}>
-            Gone. And there is a <span>signature</span> that says so.
+            Gone. The record is <span>signed</span>.
             <div className="shred__hash">
               leaf 12 of 14 · checkpoint signed · witness cosigned · root 9f3a…c21e
             </div>
