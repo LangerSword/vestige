@@ -100,6 +100,8 @@ Modules: `destroy-memory`, `destroy-file`, `txn`, `verify`, `evidence`, `log`, `
 
 Physical SSD remapping, copies that existed before the destruction (backups, earlier swap), a compromised JVM, OS or kernel, a witness that colludes with the operator, and an operator who never runs the verifier. The tool cannot verify physical flash.
 
+Work is in progress on several of these limits. Closing them will change the results, the assurance levels and the interface. The record format is the part we intend to keep stable.
+
 ## Credits
 
 MIT — see [LICENSE](LICENSE). The research audit in `docs/RESEARCH_AUDIT.md` cites primary sources for every claim: 26 claims, 13 confirmed, 9 partly, 4 unverifiable, 0 refuted. NIST SP 800-88 Rev.2 and IEEE 2883 set the scope. Prior art and its licensing are listed in `docs/RELATED_WORK.md`.
