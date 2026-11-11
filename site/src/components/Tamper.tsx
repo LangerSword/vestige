@@ -11,9 +11,8 @@ export function Tamper() {
         <div className="section-head reveal">
           <h2>Change one byte. Watch the proof break.</h2>
           <p>
-            The verifier needs no network and no trust in whoever ran the destruction. It
-            recomputes the tree and compares the root against a checkpoint you already trust.
-            Edit a stored record and the comparison fails — that is the entire point.
+            The verifier needs no network. It recomputes the tree and compares the root against
+            a checkpoint you already trust.
           </p>
         </div>
 
@@ -77,8 +76,7 @@ export function Tamper() {
             </button>
 
             <p className="tamper__note">
-              The same verifier detects an edited record, a deleted record, a backdated record
-              and a forked log — 50 of 50 trials for each type.
+              It detects edited, deleted, backdated and forked logs: 50 of 50 trials per type.
             </p>
           </div>
         </div>

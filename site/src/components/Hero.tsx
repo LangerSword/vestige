@@ -37,9 +37,8 @@ export function Hero() {
           </h1>
 
           <p className="hero__sub">
-            Vestige destroys a file, <strong>proves the destruction</strong>, and ships a verifier that
-            checks the proof offline. Memory runs carry positive and negative
-            controls, because “found nothing” without a control proves nothing.
+            It destroys a file, proves the destruction, and ships an offline verifier. Memory
+            runs carry controls that can fail the run.
           </p>
 
           <div className="hero__cta">

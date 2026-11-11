@@ -5,25 +5,25 @@ const DECISIONS = [
   {
     n: "01",
     title: "Controls on every run",
-    body: "Three child JVMs: the target that must vanish, one that must still be found, one that must not exist. A run with a failed control is INVALID, and INVALID caps assurance at A0. “Found nothing” without a control proves nothing.",
+    body: "Three child JVMs: the target, one that must be found, one that must not. A failed control makes the run INVALID, and INVALID caps assurance at A0.",
     tag: "verify · canary",
   },
   {
     n: "02",
     title: "RFC 6962, not 9162",
-    body: "C2SP checkpoints hash over the RFC 6962 tree. RFC 9162 is the Certificate Transparency v2 framing and still Experimental, so it is not used. The log also refuses a witness key identical to the log key, because that witness attests to nothing.",
+    body: "C2SP checkpoints hash over the RFC 6962 tree. RFC 9162 is still Experimental, so it is not used. The log refuses a witness key equal to the log key.",
     tag: "log · merkle",
   },
   {
     n: "03",
     title: "ABORTED before the restore",
-    body: "A rollback writes the ABORTED event to the journal before it restores the file. If the restore ran first, a rollback could hide a failed destruction — and then the log would be a record of what was convenient.",
+    body: "A rollback writes ABORTED to the journal before it restores the file. Otherwise a rollback could hide a failed destruction.",
     tag: "txn · journal",
   },
   {
     n: "04",
     title: "One pass, not seven",
-    body: "NIST SP 800-88 Rev.2 and IEEE 2883 treat extra overwrite passes as folklore on modern media, and the measurements here agree: one pass and seven passes produce the same read-back. One verified pass beats seven unverified ones.",
+    body: "NIST SP 800-88 Rev.2 and IEEE 2883 treat extra passes as folklore. The measurements agree: one pass and seven passes give the same read-back.",
     tag: "destroy-file",
   },
 ];

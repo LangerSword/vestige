@@ -52,8 +52,8 @@ export function Gallery() {
         <div className="section-head reveal">
           <h2>One file. One button. Plain language.</h2>
           <p>
-            The desktop app hides the machinery without hiding the limits: the proof panel
-            says what could not be checked, in the same breath as what could.
+            The app hides the machinery. It does not hide the limits: the proof panel states
+            what could not be checked.
           </p>
         </div>
 

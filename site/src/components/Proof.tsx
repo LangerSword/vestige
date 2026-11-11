@@ -7,17 +7,17 @@ const CELLS = [
   {
     k: "49",
     unit: "tests",
-    v: "Across nine modules, including kill -9 at every state of the transaction.",
+    v: "across nine modules, including kill -9 at every transaction state.",
   },
   {
     k: "RFC 6962",
     unit: "",
-    v: "Merkle leaves and signed checkpoints — RFC 9162 is still Experimental, so it is not used.",
+    v: "merkle leaves and signed checkpoints. RFC 9162 is Experimental, so it is not used.",
   },
   {
     k: "0/26",
     unit: "refuted",
-    v: "Claims checked against primary sources: 13 confirmed, 9 partly, 4 unverifiable.",
+    v: "claims checked against primary sources: 13 confirmed, 9 partly, 4 unverifiable.",
   },
 ];
 
