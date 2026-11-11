@@ -6,22 +6,54 @@ It deletes a file with a crypto-shred. The data becomes unreadable because the k
 destroyed. Then jvd writes a signed record of what it did. Then it gives you an offline
 verifier that checks the record and reports if anyone changed it.
 
-> **Read this limit before you trust the result.** User-space Java cannot verify physical
-> flash. SSD flash-translation-layer remapping, bad-block pools, and controller-held
-> copies are not observable from this code. Every result here is **logical level only**:
-> process memory, file bytes, and file system images that the OS and the JVM expose.
+```bash
+./bin/jvd destroy-file secret.txt --work work --log log
+```
 
-## Why this exists
+```
+key=3a3682723dfc9c5d64abcfc282f65ec0ff501a048428cdc32ac6660545c06cf8
+keep this key: a transaction that has to be recovered needs it again.
+state=COMMITTED
+artifact=work/artifact.enc
+postCommitDecryptFailed=true
+```
 
-Most erasure tools answer *what* was destroyed and *how*. They answer *whether it worked*
-weakly. They answer *whether the evidence is honest* hardly at all. The tool grades its own
-homework.
+Keep that key. It is not written to disk anywhere, because a key stored beside the
+ciphertext it protects would undo the whole point of destroying it.
 
-jvd automates verification so that the validation decision does not become a rubber stamp.
-It follows NIST SP 800-88 Rev.2. **Verification** inspects the outcome of the sanitization
-operation. **Validation** is the separate, risk-based **decision** that reviews the
-verification results and accepts, rejects, or escalates. jvd records these as two separate
-fields. It never merges them.
+## What it actually does
+
+jvd runs the NIST SP 800-88 Rev.2 sanitization workflow and then *measures* the result
+instead of asserting it. Most erasure tools answer *what* was destroyed and *how*. They
+answer *whether it worked* weakly, and *whether the evidence is honest* hardly at all. The
+tool grades its own homework.
+
+jvd automates verification so the validation decision does not become a rubber stamp. It
+follows Rev.2: **verification** inspects the outcome of the sanitization operation.
+**validation** is the separate, risk-based **decision** that reviews the verification
+results and accepts, rejects, or escalates. jvd records these as two separate fields and
+never merges them.
+
+## The scope, stated exactly
+
+Every erasure tool has a boundary. Here it is, precisely, so you can decide whether it
+fits your situation.
+
+| What jvd destroys | What jvd cannot reach | Who closes the rest |
+|---|---|---|
+| The file's bytes, verified by re-reading them | Copies the drive made **before** jvd ran: backups, snapshots, swap, replication | Your backup and retention policy |
+| The key that opens the encrypted container | Copies the drive keeps **for itself**: SSD flash translation layers, bad-block pools, controller-held copies | Drive-level sanitize (NVMe sanitize, Block Erase), or your storage provider's purge API |
+| The secret's place in the JVM heap | A compromised JVM, OS, or kernel | Trust in your platform |
+| The evidence record's integrity | An operator who never runs the verifier, or a witness that colludes with the operator | Run `jvd-verify`; use a witness you control |
+
+**The honest summary:** jvd proves the software-level destruction happened and that the
+record of it is genuine. It does not claim your SSD's flash was sanitized, because no
+user-space program can know that. Rev.2 calls a tool's scope *logical level* and the
+device-level work *physical media sanitization*. jvd is the first; the table names the
+tool that does the second.
+
+This is a boundary, not a defect. The alternative, claiming more than the tool can see,
+is what makes erasure evidence worthless in an audit.
 
 ## How it works
 
@@ -62,7 +94,8 @@ stateDiagram-v2
     STAGED --> VAULTED: encrypt a copy
     VAULTED --> SCRUBBED: overwrite and delete the original
     SCRUBBED --> VALIDATED_PRECOMMIT: run the checks
-    VALIDATED_PRECOMMIT --> COMMITTED: destroy the key
+    VALIDATED_PRECOMMIT --> COMMITTING: record the intent
+    COMMITTING --> COMMITTED: destroy the key
     STAGED --> ABORTED: failure or crash
     VAULTED --> ABORTED: failure or crash
     SCRUBBED --> ABORTED: failure or crash
@@ -70,6 +103,12 @@ stateDiagram-v2
     ABORTED --> [*]: restore the original
     COMMITTED --> [*]: nothing can be restored
 ```
+
+`COMMITTING` exists for a reason. Destroying the key cannot be undone, so the journal
+records the intent to do it **before** it happens. If the process dies in that window,
+recovery looks at the filesystem rather than the journal: the key file gone means the
+destruction happened and stands; the key file still there means it did not, and the
+original is restored. Neither case reports a destroyed file as never destroyed.
 
 **Four decisions carry the tool.**
 
@@ -91,7 +130,9 @@ stateDiagram-v2
 ## See it work
 
 ```
-$ ./bin/jvd destroy-file secret.txt --kek-hex <hex> --work work --log log
+$ ./bin/jvd destroy-file secret.txt --work work --log log
+key=3a3682723dfc9c5d64abcfc282f65ec0ff501a048428cdc32ac6660545c06cf8
+keep this key: a transaction that has to be recovered needs it again.
 state=COMMITTED
 artifact=/home/you/work/artifact.enc
 postCommitDecryptFailed=true
@@ -101,15 +142,16 @@ logSize=1
 ```
 
 ```
-$ ./bin/jvd-verify --log log --checkpoint log/checkpoint.txt --pubkey <b64>
-OK: log verified (size=1, root matches checkpoint, signatures valid, inclusion proofs valid, timestamps monotonic)
+$ ./bin/jvd verify --log log
+OK: log verified (size=1, root matches checkpoint, signatures valid, inclusion proofs valid)
 ```
 
 Change one byte of a stored record, and the verifier says so:
 
 ```
-$ ./bin/jvd-verify --log log --checkpoint log/checkpoint.txt --pubkey <b64>
+$ ./bin/jvd verify --log log
 TAMPER DETECTED: checkpoint root does not match recomputed log root (record edited)
+TAMPER DETECTED: the log does not match its checkpoint or its signatures
 ```
 
 ## Run it
@@ -217,15 +259,15 @@ backdated record, and a forked log in 50 of 50 trials for each type.
 |---|---|---|
 | `destroy-memory` | `SecretBuffer`: off-heap storage via FFM, page-aligned, fills with zeros before close, attempts `mlock` and `MADV_DONTDUMP` and reports the result | 4 |
 | `destroy-file` | Single-pass overwrite with fsync and delete, and per-file crypto-shred with AES-256-GCM | 4 |
-| `txn` | The transaction state machine and the write-ahead journal, with crash recovery | 5 |
+| `txn` | The transaction state machine and the write-ahead journal, with crash recovery | 9 |
 | `verify` | The canary verifier: parent process, child processes, positive and negative controls | 4 |
 | `evidence` | The signed evidence record, and the `verification` and `validation` split | 4 |
 | `log` | The RFC 6962 Merkle log, signed checkpoints, witness co-signature, proofs | 6 |
-| `cli` | The `jvd` command line tool | 2 |
+| `cli` | The `jvd` command line tool: destroy, verify, recover, memory self-test | 2 |
 | `verifier-cli` | The `jvd-verify` offline verifier | 6 |
 | `gui` | The desktop app: one file, one button, plain language | 14 |
 
-The build runs 49 tests. `./mvnw -B verify` runs them.
+The build runs 53 tests. `./mvnw -B verify` runs them.
 
 ## Assurance levels
 
@@ -239,12 +281,6 @@ The build runs 49 tests. `./mvnw -B verify` runs them.
   a separate process.
 
 Every level carries "physical media NOT verified".
-
-## What this does not defend against
-
-Physical SSD remapping, copies that existed before the destruction (backups, earlier
-swap), a compromised JVM, an OS, or a kernel, a witness that colludes with the operator,
-and an operator who never runs the verifier. The tool cannot verify physical flash.
 
 ## Prior work and novelty
 
@@ -261,7 +297,7 @@ with an offline verifier. See `docs/RELATED_WORK.md`.
 ## Build and test from source
 
 ```bash
-./mvnw -B verify          # compile and run all 35 tests
+./mvnw -B verify          # compile and run all 53 tests
 ./mvnw -B package         # build the runnable jars
 scripts/run_experiments.sh   # regenerate the experiment data (about 15 minutes)
 ```
