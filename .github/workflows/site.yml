@@ -60,7 +60,6 @@ jobs:
     # Pages has to be switched on for the repository before this can run. When it has
     # not been, the deploy is skipped rather than failed: the site still builds, and the
     # reason is stated once instead of on every push.
-    if: always() && needs.build.result == 'success' && github.repository_owner == 'LangerSword'
     # The github-pages environment is not declared here. A job that names an
     # environment which does not exist yet is skipped before it runs a single step,
     # and the site was building on every push without ever being published. The
